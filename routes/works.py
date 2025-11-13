@@ -3,6 +3,18 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Work, Like, Collection
 from utils import allowed_file, save_upload_file
 import os
+import base64
+import json
+import uuid
+import requests
+from datetime import datetime
+from io import BytesIO
+
+try:
+	from PIL import Image  # Optional, used to get original image size
+	_PIL_AVAILABLE = True
+except Exception:
+	_PIL_AVAILABLE = False
 
 works_bp = Blueprint('works', __name__, url_prefix='/api/works')
 
@@ -216,3 +228,110 @@ def unlike_work(work_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'取消点赞失败: {str(e)}'}), 500
+
+
+@works_bp.route('/ocr', methods=['POST'])
+def ocr_recognize():
+	"""调用古籍OCR API，对上传的图片进行识别，并将结果JSON暂存到 json_temp 目录。
+	
+	Request JSON:
+	- image: base64 数据（可包含 dataURL 前缀）
+	- det_mode/version/return_position: 可选透传参数
+	
+	Response JSON:
+	- message: success | error
+	- temp_json_path: 暂存JSON文件的相对路径
+	- boxes: 提取的字符框 [{text, position:[x1,y1,x2,y2], confidence, det_confidence}]
+	- image_size: {width, height} 原图尺寸（如可获取）
+	"""
+	try:
+		req_data = request.get_json(silent=True) or {}
+		image_b64 = req_data.get('image', '')
+		if not image_b64:
+			return jsonify({'message': 'error', 'info': '缺少 image(base64)'}), 400
+
+		# 去掉 dataURL 前缀
+		if ',' in image_b64:
+			image_b64 = image_b64.split(',', 1)[1]
+
+		# 读取原图尺寸（如果 Pillow 可用）
+		orig_width = None
+		orig_height = None
+		if _PIL_AVAILABLE:
+			try:
+				img_bytes = base64.b64decode(image_b64)
+				with Image.open(BytesIO(img_bytes)) as im:
+					orig_width, orig_height = im.size
+			except Exception:
+				pass
+
+		# 环境变量中读取鉴权
+		token = os.getenv('Token', '').strip('"').strip("'")
+		email = os.getenv('Email', '').strip('"').strip("'")
+		if not token or not email:
+			return jsonify({'message': 'error', 'info': '服务器未配置 OCR Token/Email 环境变量'}), 500
+
+		# 组装请求体（透传可选参数）
+		params = {
+			'token': token,
+			'email': email,
+			'image': image_b64
+		}
+		for key in ('det_mode', 'version', 'return_position'):
+			if key in req_data:
+				params[key] = req_data[key]
+		# 默认确保返回位置信息
+		params.setdefault('return_position', True)
+		params.setdefault('version', 'v2')
+		params.setdefault('det_mode', 'auto')
+
+		# 调用远端 OCR
+		api_url = 'https://ocr.kandianguji.com/ocr_api'
+		resp = requests.post(api_url, json=params, timeout=30)
+		resp.raise_for_status()
+		api_json = resp.json()
+
+		# 保存到 json_temp
+		from flask import current_app
+		json_temp_dir = os.path.join(os.path.dirname(current_app.instance_path), 'json_temp')
+		if not os.path.exists(json_temp_dir):
+			os.makedirs(json_temp_dir, exist_ok=True)
+
+		filename = f"ocr_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}.json"
+		temp_path = os.path.join(json_temp_dir, filename)
+		with open(temp_path, 'w', encoding='utf-8') as f:
+			json.dump(api_json, f, ensure_ascii=False, indent=2)
+
+		# 提取 boxes（与 API_Test/extract_characters.py 的结构保持一致字段）
+		boxes = []
+		if isinstance(api_json, dict) and api_json.get('message') == 'success':
+			data = api_json.get('data', {})
+			text_lines = data.get('text_lines', [])
+			for line_idx, text_line in enumerate(text_lines):
+				words = text_line.get('words', [])
+				for word_idx, word in enumerate(words):
+					text = word.get('text', '')
+					position = word.get('position', [])
+					confidence = word.get('confidence', 0.0)
+					det_confidence = word.get('det_confidence', 0.0)
+					if text and isinstance(position, list) and len(position) >= 4:
+						boxes.append({
+							'text': text,
+							'position': position[:4],  # [x1,y1,x2,y2]
+							'confidence': confidence,
+							'det_confidence': det_confidence,
+							'line_index': line_idx,
+							'word_index': word_idx
+						})
+
+		return jsonify({
+			'message': 'success',
+			'temp_json_path': f"json_temp/{filename}",
+			'boxes': boxes,
+			'image_size': {'width': orig_width, 'height': orig_height} if orig_width and orig_height else None
+		}), 200
+
+	except requests.exceptions.RequestException as e:
+		return jsonify({'message': 'error', 'info': f"OCR API 请求失败: {str(e)}"}), 502
+	except Exception as e:
+		return jsonify({'message': 'error', 'info': f'服务器错误: {str(e)}'}), 500

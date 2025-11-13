@@ -44,6 +44,11 @@ def create_app(config_name='default'):
         os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'works'))
         os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'avatars'))
 
+    # 创建 json_temp 目录（用于暂存OCR结果）
+    json_temp_dir = os.path.join(os.path.dirname(app.instance_path), 'json_temp')
+    if not os.path.exists(json_temp_dir):
+        os.makedirs(json_temp_dir, exist_ok=True)
+        
     # 静态文件路由（用于访问上传的图片）
     @app.route('/uploads/<path:filename>')
     def uploaded_file(filename):
