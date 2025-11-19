@@ -237,8 +237,8 @@ def save_annotations():
         if not data:
             return jsonify({'error': '未接收到数据'}), 400
         
-        # 创建保存目录
-        save_dir = Path(__file__).parent.parent.parent / 'calligraphy_annotations'
+        # 创建保存目录（位于 Backend/calligraphy_annotations 下）
+        save_dir = Path(__file__).resolve().parent.parent / 'calligraphy_annotations'
         save_dir.mkdir(exist_ok=True)
         
         # 生成文件名
@@ -267,7 +267,7 @@ def list_annotations():
     返回注释列表
     """
     try:
-        save_dir = Path(__file__).parent.parent.parent / 'calligraphy_annotations'
+        save_dir = Path(__file__).resolve().parent.parent / 'calligraphy_annotations'
         
         if not save_dir.exists():
             return jsonify({'annotations': []}), 200
@@ -309,7 +309,7 @@ def load_annotation(filename):
         # 安全检查文件名
         filename = secure_filename(filename)
         
-        save_dir = Path(__file__).parent.parent.parent / 'calligraphy_annotations'
+        save_dir = Path(__file__).resolve().parent.parent / 'calligraphy_annotations'
         filepath = save_dir / filename
         
         if not filepath.exists():
