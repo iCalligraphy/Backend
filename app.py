@@ -6,7 +6,7 @@ import os
 
 from config import config
 from models import db
-from routes import auth_bp, works_bp, users_bp, comments_bp, collections_bp
+from routes import auth_bp, works_bp, users_bp, comments_bp, collections_bp, calligraphy_bp
 
 # 加载环境变量
 load_dotenv()
@@ -37,6 +37,7 @@ def create_app(config_name='default'):
     app.register_blueprint(users_bp)
     app.register_blueprint(comments_bp)
     app.register_blueprint(collections_bp)
+    app.register_blueprint(calligraphy_bp)
 
     # 创建上传目录
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -100,6 +101,11 @@ def create_app(config_name='default'):
     def review_center():
         """审核中心"""
         return render_template('review_center.html')
+
+    @app.route('/read-post')
+    def read_post():
+        """读帖页面"""
+        return render_template('read_post.html')
 
     # ========== API 信息路由 ==========
     @app.route('/api')
