@@ -39,6 +39,7 @@ instance/
 # Uploads
 uploads/
 static/uploads/
+json_temp/
 
 # IDE
 .vscode/
