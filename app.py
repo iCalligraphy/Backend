@@ -60,52 +60,52 @@ def create_app(config_name='default'):
     @app.route('/')
     def index():
         """首页"""
-        return render_template('index.html')
+        return render_template('index.html', active_page='index')
 
     @app.route('/auth')
     def auth():
         """登录/注册页面"""
-        return render_template('auth.html')
+        return render_template('auth.html', active_page='auth')
 
     @app.route('/profile')
     def profile():
         """个人主页"""
-        return render_template('profile.html')
+        return render_template('profile.html', active_page='profile')
 
     @app.route('/search')
     def search():
         """搜索页面"""
-        return render_template('search.html')
+        return render_template('search.html', active_page='search')
 
     @app.route('/community')
     def community():
         """社区页面"""
-        return render_template('community.html')
+        return render_template('community.html', active_page='community')
 
     @app.route('/my-collections')
     def my_collections():
         """我的收藏"""
-        return render_template('my_collections.html')
+        return render_template('my_collections.html', active_page='my_collections')
 
     @app.route('/work-upload')
     def work_upload():
         """作品上传"""
-        return render_template('work_upload.html')
+        return render_template('work_upload.html', active_page='work_upload')
 
     @app.route('/work/<int:work_id>')
     def work_detail(work_id):
         """作品详情"""
-        return render_template('work_detail.html')
+        return render_template('work_detail.html', active_page='work_detail')
 
     @app.route('/review-center')
     def review_center():
         """审核中心"""
-        return render_template('review_center.html')
+        return render_template('review_center.html', active_page='review_center')
 
     @app.route('/read-post')
     def read_post():
         """读帖页面"""
-        return render_template('read_post.html')
+        return render_template('read_post.html', active_page='read_post')
 
     # ========== API 信息路由 ==========
     @app.route('/api')
