@@ -66,11 +66,6 @@ def create_app(config_name='default'):
     def auth():
         """登录/注册页面"""
         return render_template('auth.html', active_page='auth')
-        
-    @app.route('/login')
-    def login_page():
-        """登录页面（重定向到auth页面）"""
-        return render_template('auth.html', active_page='auth')
 
     @app.route('/profile')
     def profile():
