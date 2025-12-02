@@ -22,6 +22,10 @@ class User(db.Model):
     comments = db.relationship('Comment', backref='author', lazy='dynamic', cascade='all, delete-orphan')
     collections = db.relationship('Collection', backref='collector', lazy='dynamic', cascade='all, delete-orphan')
     likes = db.relationship('Like', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    posts = db.relationship('Post', backref='author', lazy='dynamic', cascade='all, delete-orphan')
+    post_likes = db.relationship('PostLike', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    post_comments = db.relationship('PostComment', backref='author', lazy='dynamic', cascade='all, delete-orphan')
+    checkins = db.relationship('Checkin', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
     def set_password(self, password):
         """设置密码哈希"""
@@ -41,7 +45,8 @@ class User(db.Model):
             'bio': self.bio,
             'created_at': self.created_at.isoformat(),
             'works_count': self.works.count(),
-            'collections_count': self.collections.count()
+            'collections_count': self.collections.count(),
+            'posts_count': self.posts.count()
         }
 
     def __repr__(self):
@@ -96,7 +101,7 @@ class Work(db.Model):
 
 
 class Comment(db.Model):
-    """评论模型"""
+    """评论模型（针对作品）"""
     __tablename__ = 'comments'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -159,7 +164,7 @@ class Collection(db.Model):
 
 
 class Like(db.Model):
-    """点赞模型"""
+    """点赞模型（针对作品）"""
     __tablename__ = 'likes'
 
     id = db.Column(db.Integer, primary_key=True)
@@ -181,3 +186,128 @@ class Like(db.Model):
 
     def __repr__(self):
         return f'<Like user:{self.user_id} work:{self.work_id}>'
+
+
+class Post(db.Model):
+    """社区帖子模型"""
+    __tablename__ = 'posts'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200))  # 标题可选
+    content = db.Column(db.Text, nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # 关系
+    likes = db.relationship('PostLike', backref='post', lazy='dynamic', cascade='all, delete-orphan')
+    comments = db.relationship('PostComment', backref='post', lazy='dynamic', cascade='all, delete-orphan')
+
+    def to_dict(self, include_author=True):
+        """转换为字典"""
+        data = {
+            'id': self.id,
+            'title': self.title,
+            'content': self.content,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+            'likes_count': self.likes.count(),
+            'comments_count': self.comments.count()
+        }
+        if include_author:
+            data['author'] = {
+                'id': self.author.id,
+                'username': self.author.username,
+                'avatar': self.author.avatar
+            }
+        return data
+
+    def __repr__(self):
+        return f'<Post {self.id}>'
+
+
+class PostLike(db.Model):
+    """帖子点赞模型"""
+    __tablename__ = 'post_likes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 唯一约束：一个用户不能重复点赞同一帖子
+    __table_args__ = (db.UniqueConstraint('user_id', 'post_id', name='unique_user_post_like'),)
+
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'post_id': self.post_id,
+            'created_at': self.created_at.isoformat()
+        }
+
+    def __repr__(self):
+        return f'<PostLike user:{self.user_id} post:{self.post_id}>'
+
+
+class PostComment(db.Model):
+    """帖子评论模型"""
+    __tablename__ = 'post_comments'
+
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey('post_comments.id'))  # 父评论ID，用于回复
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 自引用关系
+    replies = db.relationship('PostComment', backref=db.backref('parent', remote_side=[id]),
+                            lazy='dynamic', cascade='all, delete-orphan')
+
+    def to_dict(self, include_replies=False):
+        """转换为字典"""
+        data = {
+            'id': self.id,
+            'content': self.content,
+            'post_id': self.post_id,
+            'author': {
+                'id': self.author.id,
+                'username': self.author.username,
+                'avatar': self.author.avatar
+            },
+            'created_at': self.created_at.isoformat(),
+            'parent_id': self.parent_id
+        }
+        if include_replies:
+            data['replies'] = [reply.to_dict() for reply in self.replies]
+        return data
+
+    def __repr__(self):
+        return f'<PostComment {self.id}>'
+
+
+class Checkin(db.Model):
+    """每日打卡模型"""
+    __tablename__ = 'checkins'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    checkin_date = db.Column(db.Date, default=datetime.utcnow().date(), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 唯一约束：一个用户每天只能打卡一次
+    __table_args__ = (db.UniqueConstraint('user_id', 'checkin_date', name='unique_user_daily_checkin'),)
+
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'checkin_date': self.checkin_date.isoformat(),
+            'created_at': self.created_at.isoformat()
+        }
+
+    def __repr__(self):
+        return f'<Checkin user:{self.user_id} date:{self.checkin_date}>'

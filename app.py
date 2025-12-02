@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 import os
 
 from config import config
-from models import db
-from routes import auth_bp, works_bp, users_bp, comments_bp, collections_bp, calligraphy_bp
+from models import db, User
+from routes import auth_bp, works_bp, users_bp, comments_bp, collections_bp, calligraphy_bp, posts_bp
 
 # 加载环境变量
 load_dotenv()
@@ -28,7 +28,7 @@ def create_app(config_name='default'):
 
     # 初始化扩展
     db.init_app(app)
-    CORS(app, origins=app.config['CORS_ORIGINS'])
+    CORS(app, origins=app.config['CORS_ORIGINS'], supports_credentials=True)
     jwt = JWTManager(app)
 
     # 注册蓝图
@@ -38,6 +38,7 @@ def create_app(config_name='default'):
     app.register_blueprint(comments_bp)
     app.register_blueprint(collections_bp)
     app.register_blueprint(calligraphy_bp)
+    app.register_blueprint(posts_bp)
 
     # 创建上传目录
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -63,6 +64,7 @@ def create_app(config_name='default'):
         return render_template('index.html', active_page='index')
 
     @app.route('/auth')
+    @app.route('/auth.html')
     def auth():
         """登录/注册页面"""
         return render_template('auth.html', active_page='auth')
@@ -139,18 +141,38 @@ def create_app(config_name='default'):
         db.session.rollback()
         return jsonify({'error': '服务器内部错误'}), 500
 
-    # JWT 错误处理
+    # JWT 错误处理 - 添加详细调试信息
     @jwt.expired_token_loader
     def expired_token_callback(jwt_header, jwt_payload):
+        print(f"[JWT ERROR] Token 已过期: {jwt_header}, {jwt_payload}")
         return jsonify({'error': 'Token 已过期'}), 401
 
     @jwt.invalid_token_loader
     def invalid_token_callback(error):
-        return jsonify({'error': '无效的 Token'}), 401
+        print(f"[JWT ERROR] 无效的 Token: {str(error)}")
+        return jsonify({'error': f'无效的 Token: {str(error)}'}), 401
 
     @jwt.unauthorized_loader
     def missing_token_callback(error):
-        return jsonify({'error': '缺少 Token'}), 401
+        print(f"[JWT ERROR] 缺少 Token: {str(error)}")
+        return jsonify({'error': f'缺少 Token: {str(error)}'}), 401
+    
+    # 额外的JWT验证钩子用于调试
+    @jwt.token_in_blocklist_loader
+    def check_if_token_in_blocklist(jwt_header, jwt_payload):
+        print(f"[JWT DEBUG] 检查token是否在黑名单: {jwt_payload['jti']}")
+        return False
+    
+    @jwt.user_identity_loader
+    def user_identity_lookup(user):
+        print(f"[JWT DEBUG] 设置用户身份: {user}")
+        return user
+    
+    @jwt.user_lookup_loader
+    def user_lookup_callback(_jwt_header, jwt_data):
+        identity = jwt_data["sub"]
+        print(f"[JWT DEBUG] 查找用户身份: {identity}")
+        return User.query.get(identity) if identity else None
 
     # 创建数据库表
     with app.app_context():
