@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
@@ -209,8 +209,8 @@ class Post(db.Model):
             'id': self.id,
             'title': self.title,
             'content': self.content,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat(),
+            'created_at': (self.created_at + timedelta(hours=8)).isoformat(),
+            'updated_at': (self.updated_at + timedelta(hours=8)).isoformat(),
             'likes_count': self.likes.count(),
             'comments_count': self.comments.count()
         }
