@@ -29,10 +29,14 @@ Backend/
 │   ├── works.py       # 作品相关
 │   ├── users.py       # 用户相关
 │   ├── comments.py    # 评论相关
-│   └── collections.py # 收藏相关
-└── uploads/           # 文件上传目录
-    ├── works/         # 作品图片
-    └── avatars/       # 用户头像
+│   ├── collections.py # 收藏相关
+│   ├── calligraphy.py # 书法相关
+│   └── posts.py       # 帖子相关
+├── calligraphy_annotations/  # 书法注释数据
+│   └── .gitkeep
+├── json_temp/                # 临时JSON文件
+├── Docs/                     # 项目文档
+
 ```
 
 ## 快速开始
@@ -81,6 +85,23 @@ python app.py
 应用将在 `http://localhost:5000` 启动。
 
 ## API 端点
+
+### 帖子相关 (`/api/posts`)
+
+- `GET /api/posts` - 获取帖子列表
+- `GET /api/posts/<post_id>` - 获取帖子详情
+- `POST /api/posts` - 创建帖子（需认证）
+- `PUT /api/posts/<post_id>` - 更新帖子（需认证）
+- `DELETE /api/posts/<post_id>` - 删除帖子（需认证）
+- `POST /api/posts/<post_id>/like` - 点赞帖子（需认证）
+- `GET /api/posts/<post_id>/comments` - 获取帖子评论
+
+### 书法相关 (`/api/calligraphy`)
+
+- `GET /api/calligraphy/annotations` - 获取书法注释
+- `POST /api/calligraphy/annotations` - 创建书法注释（需认证）
+- `GET /api/calligraphy/styles` - 获取书法风格列表
+- `POST /api/calligraphy/analyze` - 分析书法作品（需认证）
 
 ### 认证相关 (`/api/auth`)
 
@@ -158,7 +179,7 @@ python app.py
 
 ## 开发注意事项
 
-1. **文件上传**: 支持的图片格式为 png, jpg, jpeg, gif, bmp，最大 16MB
+1. **文件处理**: 书法注释和临时文件存储在 calligraphy_annotations/ 和 json_temp/ 目录
 2. **分页**: 默认每页 12 条数据，可通过 `page` 和 `per_page` 参数调整
 3. **CORS**: 默认允许 `http://localhost:3000` 和 `http://127.0.0.1:3000`
 4. **数据库**: 使用 SQLite，数据文件为 `icalligraphy.db`
