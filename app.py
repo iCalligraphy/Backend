@@ -89,6 +89,37 @@ def create_app(config_name='default'):
         """社区页面"""
         return render_template('community.html', active_page='community')
 
+    @app.route('/community/topics')
+    def community_topics():
+        """社区话题页面"""
+        return render_template('topics.html', active_page='topics')
+
+    @app.route('/community/topics/<topic_type>')
+    def community_topic_detail(topic_type):
+        """社区主题详情页面"""
+        # 临时默认数据，实际项目中应从数据库获取
+        topic_stats = {
+            'posts': 0,
+            'followers': 0
+        }
+        return render_template('topic_detail.html', active_page='topics', topic_type=topic_type, topic_stats=topic_stats)
+
+    @app.route('/my-collections')
+    @app.route('/community/follow')
+    def community_follow():
+        """社区关注页面"""
+        return render_template('follow.html', active_page='follow')
+
+    @app.route('/community/notifications')
+    def community_notifications():
+        """社区通知页面"""
+        return render_template('notifications.html', active_page='notifications')
+
+    @app.route('/community/feedback')
+    def community_feedback():
+        """社区反馈页面"""
+        return render_template('feedback.html', active_page='feedback')
+
     @app.route('/my-collections')
     def my_collections():
         """我的收藏"""
