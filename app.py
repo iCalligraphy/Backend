@@ -210,10 +210,6 @@ def create_app(config_name='default'):
         print(f"[JWT DEBUG] 查找用户身份: {identity}")
         return User.query.get(identity) if identity else None
 
-    # 创建数据库表
-    with app.app_context():
-        db.create_all()
-
     return app
 
 
@@ -222,6 +218,23 @@ if __name__ == '__main__':
     env = os.getenv('FLASK_ENV', 'development')
     app = create_app(env)
 
+    # 检查数据库是否可用，如果不可用或缺少表则执行初始化
+    try:
+        with app.app_context():
+            # 尝试查询数据库以检查连接和表是否存在
+            from sqlalchemy import text
+            # 先检查数据库连接
+            db.session.execute(text('SELECT 1'))
+            # 再检查关键表是否存在（这里检查users表）
+            db.session.execute(text('SELECT * FROM users LIMIT 1'))
+            print("数据库连接成功，表结构完整")
+    except Exception as e:
+        print(f"数据库检查失败: {e}")
+        print("正在执行数据库初始化...")
+        # 执行init_db.py脚本
+        import subprocess
+        subprocess.run(['python', 'init_db.py'], check=True)
+    
     # 运行应用
     app.run(
         host='0.0.0.0',

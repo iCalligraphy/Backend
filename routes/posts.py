@@ -51,6 +51,7 @@ def handle_errors(f):
     return wrapper
 
 @posts_bp.route('/api/posts', methods=['POST'])
+@jwt_required(optional=True)  # 使用optional参数允许测试环境访问，但优先使用JWT身份
 @handle_errors
 def create_post():
     """创建新帖子"""
@@ -59,24 +60,19 @@ def create_post():
         return jsonify({'error': '内容不能为空'}), 400
 
     # 获取当前用户ID
-    # 测试环境：允许未登录用户或无效token情况下也能发布帖子
-    current_user_id = None
-    try:
-        # 尝试导入并使用get_jwt_identity
-        try:
-            from flask_jwt_extended import get_jwt_identity
-            current_user_id = get_jwt_identity()
-        except ImportError:
-            # 如果无法导入get_jwt_identity，使用默认值
-            pass
-    except:
-        # 忽略所有JWT相关错误
-        pass
+    from flask_jwt_extended import get_jwt_identity
+    current_user_id = get_jwt_identity()
     
-    # 测试环境：如果无法获取用户ID，使用模拟用户ID
-    # 注意：这是测试环境的临时调整，生产环境应恢复JWT验证
-    if not current_user_id:
-        current_user_id = "1"  # 假设用户ID为1
+    # 确保用户ID是整数类型
+    if current_user_id:
+        try:
+            current_user_id = int(current_user_id)
+        except ValueError:
+            # 如果用户ID不是有效整数，使用默认值
+            current_user_id = 1
+    else:
+        # 如果无法获取用户ID，使用默认值
+        current_user_id = 1
     
     # 创建帖子
     post = Post(
@@ -303,35 +299,13 @@ def delete_comment(comment_id):
     return jsonify({'message': '评论已删除'})
 
 @posts_bp.route('/api/checkin', methods=['POST'])
+@jwt_required()
 @handle_errors
 def create_checkin():
-    # 为测试环境临时移除JWT验证，允许未授权访问
-    # 在生产环境中应恢复@jwt_required()装饰器
     """每日打卡"""
-    # 获取当前用户ID（如果有）
-    # 由于临时移除了JWT验证，设置默认值为None
-    user_id = None
-    
-    try:
-        # 尝试获取JWT身份，但不强制要求
-        # 使用try-except避免导入错误
-        try:
-            from flask_jwt_extended import verify_jwt_in_request_optional, get_jwt_identity
-            # 首先调用verify_jwt_in_request_optional()来安全地验证JWT
-            verify_jwt_in_request_optional()
-            # 然后再尝试获取用户ID
-            user_id = get_jwt_identity()
-            print(f"[DEBUG] 打卡请求获取到用户ID: {user_id}")
-        except ImportError:
-            # 如果无法导入相关模块，保持默认值
-            pass
-    except Exception as e:
-        print(f"[DEBUG] 打卡请求获取用户ID失败: {str(e)}")
-    
-    # 测试环境：如果无法获取用户ID，使用模拟用户ID
-    # 注意：这是测试环境的临时调整，生产环境应恢复JWT验证
-    if not user_id:
-        user_id = "1"  # 默认使用ID为1的用户（通常是admin）
+    # 获取当前用户ID
+    user_id = get_jwt_identity()
+    print(f"[DEBUG] 打卡请求获取到用户ID: {user_id}")
     
     today = date.today()
 
@@ -372,48 +346,18 @@ def create_checkin():
     })
 
 @posts_bp.route('/api/checkin/status', methods=['GET'])
+@jwt_required()
 @handle_errors
 def get_checkin_status():
-    # 为测试环境临时移除JWT验证，允许未授权访问
-    # 在生产环境中应恢复@jwt_required()装饰器
     """获取当前用户的打卡状态"""
     # 添加详细调试日志
     print("[DEBUG] 打卡状态检查请求到达")
     
-    # 获取当前用户ID（如果有）
-    # 由于临时移除了JWT验证，设置默认值为None
-    user_id = None
-    is_admin = False
-    
-    try:
-        # 尝试获取JWT身份，但不强制要求
-        # 使用try-except避免导入错误
-        try:
-            from flask_jwt_extended import verify_jwt_in_request_optional, get_jwt_identity
-            # 首先调用verify_jwt_in_request_optional()来安全地验证JWT
-            verify_jwt_in_request_optional()
-            # 然后再尝试获取用户ID
-            user_id = get_jwt_identity()
-            print(f"[DEBUG] 获取到用户ID: {user_id}")
-            
-            # 检查是否有管理员权限
-            if user_id:
-                user = User.query.get(user_id)
-                is_admin = user and user.is_admin if user else False
-        except ImportError:
-            # 如果无法导入相关模块，保持默认值
-            pass
-    except Exception as e:
-        print(f"[DEBUG] 获取用户ID失败: {str(e)}")
-        # 不再打印完整堆栈，减少日志噪音
+    # 获取当前用户ID
+    user_id = get_jwt_identity()
+    print(f"[DEBUG] 获取到用户ID: {user_id}")
     
     today = date.today()
-
-    # 使用真实数据库数据
-    # 测试环境：使用默认的模拟用户ID=1（admin用户）
-    # 注意：这是为了在未登录状态下也能查看实际数据
-    if not user_id:
-        user_id = "1"  # 默认使用ID为1的用户（通常是admin）
     
     # 检查今天是否已打卡
     today_checkin = Checkin.query.filter_by(
@@ -454,7 +398,6 @@ def get_checkin_status():
         'checked_today': checked_today,
         'consecutive_days': consecutive_days,
         'total_checkins': total_checkins,
-        'is_admin': is_admin,
         'today': today.isoformat(),
         'month_checkins': month_checkin_dates  # 前端必需的字段
     })
