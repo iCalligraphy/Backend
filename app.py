@@ -104,12 +104,15 @@ def create_app(config_name='default'):
         }
         return render_template('topic_detail.html', active_page='topics', topic_type=topic_type, topic_stats=topic_stats)
 
-    @app.route('/my-collections')
     @app.route('/community/follow')
     def community_follow():
         """社区关注页面"""
         return render_template('follow.html', active_page='follow')
 
+    @app.route('/my-collection')
+    def my_collection():
+        """单个我的收藏页面（对应 my_collection.html）"""
+        return render_template('my_collection.html', active_page='my_collection')
     @app.route('/community/notifications')
     def community_notifications():
         """社区通知页面"""
