@@ -46,7 +46,9 @@ class User(db.Model):
             'created_at': self.created_at.isoformat(),
             'works_count': self.works.count(),
             'collections_count': self.collections.count(),
-            'posts_count': self.posts.count()
+            'posts_count': self.posts.count(),
+            'followers_count': self.followers.count(),
+            'following_count': self.following.count()
         }
 
     def __repr__(self):
@@ -311,3 +313,32 @@ class Checkin(db.Model):
 
     def __repr__(self):
         return f'<Checkin user:{self.user_id} date:{self.checkin_date}>'
+
+
+class Follow(db.Model):
+    """关注关系模型"""
+    __tablename__ = 'follows'
+
+    id = db.Column(db.Integer, primary_key=True)
+    follower_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    followed_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 唯一约束：一个用户不能重复关注另一个用户
+    __table_args__ = (db.UniqueConstraint('follower_id', 'followed_id', name='unique_follow_relationship'),)
+
+    # 关系
+    follower = db.relationship('User', foreign_keys=[follower_id], backref=db.backref('following', lazy='dynamic', cascade='all, delete-orphan'))
+    followed = db.relationship('User', foreign_keys=[followed_id], backref=db.backref('followers', lazy='dynamic', cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'follower_id': self.follower_id,
+            'followed_id': self.followed_id,
+            'created_at': self.created_at.isoformat()
+        }
+
+    def __repr__(self):
+        return f'<Follow {self.follower_id} -> {self.followed_id}>'
