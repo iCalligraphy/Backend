@@ -6,5 +6,6 @@ from .comments import comments_bp
 from .collections import collections_bp
 from .calligraphy import calligraphy_bp
 from .posts import posts_bp
+from .topics import topics_bp
 
-__all__ = ['auth_bp', 'works_bp', 'users_bp', 'comments_bp', 'collections_bp', 'calligraphy_bp', 'posts_bp']
+__all__ = ['auth_bp', 'works_bp', 'users_bp', 'comments_bp', 'collections_bp', 'calligraphy_bp', 'posts_bp', 'topics_bp']

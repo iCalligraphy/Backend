@@ -342,3 +342,66 @@ class Follow(db.Model):
 
     def __repr__(self):
         return f'<Follow {self.follower_id} -> {self.followed_id}>'
+
+
+class Topic(db.Model):
+    """话题模型"""
+    __tablename__ = 'topics'
+
+    id = db.Column(db.String(50), primary_key=True)  # 使用字符串ID，如'technique'
+    name = db.Column(db.String(100), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    post_count = db.Column(db.Integer, default=0)
+    today_posts = db.Column(db.Integer, default=0)
+    color = db.Column(db.String(20), default='#8b4513')  # 话题颜色
+    icon = db.Column(db.String(10), default='🖌️')  # 话题图标
+    is_popular = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 关系
+    followers = db.relationship('FollowTopic', backref='topic', lazy='dynamic', cascade='all, delete-orphan')
+
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'post_count': self.post_count,
+            'today_posts': self.today_posts,
+            'color': self.color,
+            'icon': self.icon,
+            'is_popular': self.is_popular,
+            'created_at': self.created_at.isoformat()
+        }
+
+    def __repr__(self):
+        return f'<Topic {self.name}>'
+
+
+class FollowTopic(db.Model):
+    """用户关注话题关系模型"""
+    __tablename__ = 'follow_topics'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    topic_id = db.Column(db.String(50), db.ForeignKey('topics.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # 唯一约束：一个用户不能重复关注同一个话题
+    __table_args__ = (db.UniqueConstraint('user_id', 'topic_id', name='unique_user_topic_follow'),)
+
+    # 关系
+    user = db.relationship('User', backref=db.backref('topic_follows', lazy='dynamic', cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'topic_id': self.topic_id,
+            'created_at': self.created_at.isoformat()
+        }
+
+    def __repr__(self):
+        return f'<FollowTopic user:{self.user_id} topic:{self.topic_id}>'
