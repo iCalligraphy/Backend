@@ -83,48 +83,26 @@ def refresh():
 
 
 @auth_bp.route('/me', methods=['GET'])
+@jwt_required()
 def get_current_user():
     """获取当前登录用户信息"""
+    current_user_id = get_jwt_identity()
+    print(f"[GET_CURRENT_USER] 开始获取当前用户信息，用户ID: {current_user_id}")
+    
     try:
-        # 尝试获取用户身份信息，但不强制要求token
-        current_user_id = None
-        try:
-            # 尝试导入并使用get_jwt_identity
-            from flask_jwt_extended import get_jwt_identity
-            current_user_id = get_jwt_identity()
-        except (ImportError, RuntimeError):
-            pass
-
-        if current_user_id:
-            try:
-                # 将字符串ID转换回整数以便数据库查询
-                user = User.query.get(int(current_user_id))
-                if user:
-                    return jsonify({'user': user.to_dict()}), 200
-            except Exception:
-                pass
+        # 将字符串ID转换回整数以便数据库查询
+        user_id_int = int(current_user_id)
+        user = User.query.get(user_id_int)
         
-        # 测试环境：如果无法获取用户信息，返回模拟用户数据
-        # 注意：这是测试环境的临时调整，生产环境应恢复JWT验证
-        mock_user = {
-            'id': 1,
-            'username': 'test_user',
-            'email': 'test@example.com',
-            'created_at': datetime.now().isoformat(),
-            'updated_at': datetime.now().isoformat()
-        }
-        return jsonify({'user': mock_user}), 200
+        if user:
+            print(f"[GET_CURRENT_USER] 获取成功，用户ID: {user_id_int}，用户名: {user.username}")
+            return jsonify({'user': user.to_dict()}), 200
+        
+        print(f"[GET_CURRENT_USER] 用户不存在，用户ID: {user_id_int}")
+        return jsonify({'error': '用户不存在'}), 404
     except Exception as e:
-        # 捕获所有异常，确保返回200状态码
-        # 注意：这是测试环境的临时调整
-        mock_user = {
-            'id': 1,
-            'username': 'test_user',
-            'email': 'test@example.com',
-            'created_at': datetime.now().isoformat(),
-            'updated_at': datetime.now().isoformat()
-        }
-        return jsonify({'user': mock_user}), 200
+        print(f"[GET_CURRENT_USER] 获取失败，用户ID: {current_user_id}，错误: {str(e)}")
+        return jsonify({'error': f'获取用户信息失败: {str(e)}'}), 500
 
 
 @auth_bp.route('/logout', methods=['POST'])

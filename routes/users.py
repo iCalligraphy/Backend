@@ -48,31 +48,40 @@ def get_user_works(user_id):
 def update_profile():
     """更新用户资料"""
     current_user_id = get_jwt_identity()
+    print(f"[UPDATE_PROFILE] 开始更新用户资料，用户ID: {current_user_id}")
+    
     user = User.query.get(current_user_id)
 
     if not user:
+        print(f"[UPDATE_PROFILE] 用户不存在，用户ID: {current_user_id}")
         return jsonify({'error': '用户不存在'}), 404
 
     data = request.get_json()
+    print(f"[UPDATE_PROFILE] 收到的更新数据: {data}")
 
     if 'email' in data:
         # 检查邮箱是否已被其他用户使用
         existing_user = User.query.filter_by(email=data['email']).first()
         if existing_user and existing_user.id != current_user_id:
+            print(f"[UPDATE_PROFILE] 邮箱已被使用，邮箱: {data['email']}")
             return jsonify({'error': '邮箱已被使用'}), 409
         user.email = data['email']
+        print(f"[UPDATE_PROFILE] 更新邮箱: {data['email']}")
 
     if 'bio' in data:
         user.bio = data['bio']
+        print(f"[UPDATE_PROFILE] 更新简介: {data['bio']}")
 
     try:
         db.session.commit()
+        print(f"[UPDATE_PROFILE] 资料更新成功，用户ID: {current_user_id}")
         return jsonify({
             'message': '资料更新成功',
             'user': user.to_dict()
         }), 200
     except Exception as e:
         db.session.rollback()
+        print(f"[UPDATE_PROFILE] 更新失败，用户ID: {current_user_id}，错误: {str(e)}")
         return jsonify({'error': f'更新失败: {str(e)}'}), 500
 
 

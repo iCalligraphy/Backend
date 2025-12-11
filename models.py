@@ -28,8 +28,8 @@ class User(db.Model):
     checkins = db.relationship('Checkin', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
     def set_password(self, password):
-        """设置密码哈希"""
-        self.password_hash = generate_password_hash(password)
+        """设置密码哈希，使用更通用的pbkdf2:sha256算法"""
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
         """验证密码"""
