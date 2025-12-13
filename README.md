@@ -109,10 +109,13 @@ python app.py
 
 ### 书法相关 (`/api/calligraphy`)
 
-- `GET /api/calligraphy/annotations` - 获取书法注释
+- `GET /api/calligraphy/annotations` - 获取书法注释列表（支持分页、排序）
 - `POST /api/calligraphy/annotations` - 创建书法注释（需认证）
+- `GET /api/calligraphy/annotations/<id>` - 获取单个书法注释详情
+- `PUT /api/calligraphy/annotations/<id>` - 更新书法注释（需认证且为创建者）
+- `DELETE /api/calligraphy/annotations/<id>` - 删除书法注释（需认证且为创建者）
+- `POST /api/calligraphy/analyze` - 分析书法作品
 - `GET /api/calligraphy/styles` - 获取书法风格列表
-- `POST /api/calligraphy/analyze` - 分析书法作品（需认证）
 
 ### 认证相关 (`/api/auth`)
 
@@ -206,9 +209,15 @@ python app.py
  - post_count, today_posts, color, icon 
  - is_popular, created_at 
  
- ### FollowTopic（关注话题） 
- - id, user_id, topic_id 
- - created_at
+ ### FollowTopic（关注话题）
+- id, user_id, topic_id
+- created_at
+
+### Annotation（书法注释）
+- id, character, user_id, username
+- keypoints（关键点列表）
+  - id, description, tips, x, y
+- timestamp
 
 ## 认证机制
 
@@ -249,6 +258,28 @@ curl -X POST http://localhost:5000/api/auth/login \
 
 # 获取作品列表
 curl http://localhost:5000/api/works
+
+# 创建书法注释（需要认证）
+curl -X POST http://localhost:5000/api/calligraphy/annotations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"character": "测试", "keypoints": [{"id": 1, "description": "测试要点", "tips": "这是一个测试提示", "x": 0.5, "y": 0.5}]}'
+
+# 获取书法注释列表
+curl http://localhost:5000/api/calligraphy/annotations
+
+# 获取单个书法注释
+curl http://localhost:5000/api/calligraphy/annotations/<id>
+
+# 更新书法注释（需要认证）
+curl -X PUT http://localhost:5000/api/calligraphy/annotations/<id> \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"character": "更新测试", "keypoints": [{"id": 1, "description": "更新后的要点", "tips": "这是更新后的测试提示", "x": 0.6, "y": 0.6}]}'
+
+# 删除书法注释（需要认证）
+curl -X DELETE http://localhost:5000/api/calligraphy/annotations/<id> \
+  -H "Authorization: Bearer <access_token>"
 ```
 
 ## License
