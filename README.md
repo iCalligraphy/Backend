@@ -106,6 +106,7 @@ python app.py
  - `POST /api/topics/<topic_id>/follow` - 关注话题（需认证） 
  - `DELETE /api/topics/<topic_id>/follow` - 取消关注话题（需认证） 
  - `GET /api/users/<user_id>/following/topics` - 获取用户已关注的话题
+ - `GET /api/users/me/following/topics` - 获取当前用户已关注的话题
 
 ### 书法相关 (`/api/calligraphy`)
 
@@ -184,8 +185,9 @@ python app.py
  - created_at 
  
  ### Post（社区帖子） 
- - id, title, content, author_id 
- - created_at, updated_at 
+- id, title, content, author_id 
+- topic_id（关联话题，可选）
+- created_at, updated_at 
  
  ### PostLike（帖子点赞） 
  - id, user_id, post_id 

@@ -198,12 +198,14 @@ class Post(db.Model):
     title = db.Column(db.String(200))  # 标题可选
     content = db.Column(db.Text, nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    topic_id = db.Column(db.String(50), db.ForeignKey('topics.id'), nullable=True)  # 话题ID可选
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # 关系
     likes = db.relationship('PostLike', backref='post', lazy='dynamic', cascade='all, delete-orphan')
     comments = db.relationship('PostComment', backref='post', lazy='dynamic', cascade='all, delete-orphan')
+    topic = db.relationship('Topic', backref=db.backref('posts', lazy='dynamic'))
 
     def to_dict(self, include_author=True):
         """转换为字典"""
@@ -211,6 +213,8 @@ class Post(db.Model):
             'id': self.id,
             'title': self.title,
             'content': self.content,
+            'topic_id': self.topic_id,
+            'topic': self.topic.to_dict() if self.topic else None,
             'created_at': (self.created_at + timedelta(hours=8)).isoformat(),
             'updated_at': (self.updated_at + timedelta(hours=8)).isoformat(),
             'likes_count': self.likes.count(),

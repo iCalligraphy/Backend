@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import IntegrityError
-from models import db, Post, PostLike, PostComment, Checkin, User
+from sqlalchemy.orm import joinedload
+from models import db, Post, PostLike, PostComment, Checkin, User, Topic
 from datetime import datetime, date
 import json
 import traceback
@@ -74,13 +75,30 @@ def create_post():
         # 如果无法获取用户ID，使用默认值
         current_user_id = 1
     
+    # 获取话题ID（支持topic和topic_id两种字段名）
+    topic_id = data.get('topic') or data.get('topic_id')
+    
+    # 验证话题是否存在
+    if topic_id:
+        topic = Topic.query.get(topic_id)
+        if not topic:
+            return jsonify({'error': '话题不存在'}), 400
+    
     # 创建帖子
     post = Post(
         title=data.get('title', '').strip(),  # 标题可选
         content=data['content'].strip(),
-        author_id=current_user_id
+        author_id=current_user_id,
+        topic_id=topic_id  # 添加话题ID
     )
     db.session.add(post)
+    
+    # 更新话题帖子计数
+    if topic_id:
+        topic = Topic.query.get(topic_id)
+        topic.post_count += 1
+        topic.today_posts += 1
+    
     db.session.commit()
 
     return jsonify({
@@ -100,8 +118,8 @@ def get_posts():
     sort_by = request.args.get('sort_by', 'created_at')  # 支持 created_at, likes_count, comments_count
     order = request.args.get('order', 'desc')  # asc 或 desc
 
-    # 构建查询
-    query = Post.query
+    # 构建查询，预加载话题关系
+    query = Post.query.options(joinedload(Post.topic))
 
     # 排序逻辑
     if sort_by == 'likes_count':

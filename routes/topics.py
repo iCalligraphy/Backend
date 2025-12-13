@@ -186,10 +186,44 @@ def unfollow_topic(topic_id):
 
 @topics_bp.route('/api/users/<user_id>/following/topics', methods=['GET'])
 def get_following_topics(user_id):
-    """获取用户已关注的话题"""
+    """获取指定用户已关注的话题"""
     try:
         # 查找用户已关注的话题
         follow_records = FollowTopic.query.filter_by(user_id=user_id).all()
+        
+        # 获取话题ID列表
+        topic_ids = [record.topic_id for record in follow_records]
+        
+        # 获取话题详情
+        followed_topics = Topic.query.filter(Topic.id.in_(topic_ids)).all()
+        
+        # 转换为JSON格式
+        topics_data = [{
+            'id': topic.id,
+            'name': topic.name,
+            'description': topic.description,
+            'postCount': topic.post_count,
+            'todayPosts': topic.today_posts,
+            'color': topic.color,
+            'icon': topic.icon,
+            'isPopular': topic.is_popular,
+            'createdAt': topic.created_at.strftime('%Y-%m-%d')
+        } for topic in followed_topics]
+        
+        return jsonify({'topics': topics_data}), 200
+    except Exception as e:
+        return jsonify({'error': f'获取已关注话题失败: {str(e)}'}), 500
+
+@topics_bp.route('/api/users/me/following/topics', methods=['GET'])
+@jwt_required()
+def get_current_user_following_topics():
+    """获取当前登录用户已关注的话题"""
+    try:
+        # 获取当前用户ID
+        current_user_id = get_jwt_identity()
+        
+        # 查找用户已关注的话题
+        follow_records = FollowTopic.query.filter_by(user_id=current_user_id).all()
         
         # 获取话题ID列表
         topic_ids = [record.topic_id for record in follow_records]
