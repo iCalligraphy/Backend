@@ -182,7 +182,30 @@ def create_app(config_name='default'):
     # 创建数据库表
     with app.app_context():
         db.create_all()
+        # admin = User(
+        #     id=1,
+        #     username='admin',
+        #     email='admin@icalligraphy.com',
+        #     bio='系统管理员',
+        #     # phone='admin'
+        # )
+        # admin.set_password('admin123')
 
+        # test_user = User(
+        #     id=2,
+        #     username='testuser',
+        #     email='test@example.com',
+        #     bio='测试用户，喜欢书法艺术',
+        #     # phone='test'
+        # )
+        # test_user.set_password('test123')
+
+        # if( not User.query.filter_by(username='admin').first()):
+        #     db.session.add(admin)
+        # if( not User.query.filter_by(username='testuser').first()):
+        #     db.session.add(test_user)
+        # db.session.commit()
+        # print(db.session.query(User).all())
     return app
 
 
@@ -195,5 +218,7 @@ if __name__ == '__main__':
     app.run(
         host='0.0.0.0',
         port=5000,
-        debug=(env == 'development')
+        debug=True,
+        # debug=(env == 'development')
+        
     )
