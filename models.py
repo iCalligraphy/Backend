@@ -89,6 +89,7 @@ class Work(db.Model):
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     image_url = db.Column(db.String(255), nullable=False)
+<<<<<<< HEAD
     style = db.Column(db.String(50), nullable=True)  # 书法风格：楷书、行书、草书等
     dynasty = db.Column(db.String(50))
     author_name = db.Column(db.String(100))
@@ -97,12 +98,22 @@ class Work(db.Model):
     views = db.Column(db.Integer, default=0)
     status = db.Column(db.String(20), default="pending")  # pending, approved, rejected
     reject_reason = db.Column(db.Text)
+=======
+    style = db.Column(db.String(50))  # 书法风格：楷书、行书、草书等
+    author_name = db.Column(db.String(100))  # 作品作者（朝代+作者）
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    source_type = db.Column(db.String(50))  # 来源类型
+    tags = db.Column(db.JSON, default=list)  # 作品标签
+    views = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(20), default='approved')  # 默认approved，跳过审核
+>>>>>>> temp-branch
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
     # 关系
+<<<<<<< HEAD
     comments = db.relationship(
         "Comment", backref="work", lazy="dynamic", cascade="all, delete-orphan"
     )
@@ -112,10 +123,17 @@ class Work(db.Model):
     likes = db.relationship(
         "Like", backref="work", lazy="dynamic", cascade="all, delete-orphan"
     )
+=======
+    comments = db.relationship('Comment', backref='work', lazy='dynamic', cascade='all, delete-orphan')
+    collections = db.relationship('Collection', backref='work', lazy='dynamic', cascade='all, delete-orphan')
+    likes = db.relationship('Like', backref='work', lazy='dynamic', cascade='all, delete-orphan')
+    characters = db.relationship('Character', backref='work', lazy='dynamic', cascade='all, delete-orphan')
+>>>>>>> temp-branch
 
     def to_dict(self, include_author=True):
         """转换为字典"""
         data = {
+<<<<<<< HEAD
             "id": self.id,
             "title": self.title,
             "description": self.description,
@@ -132,6 +150,22 @@ class Work(db.Model):
             "likes_count": self.likes.count(),
             "comments_count": self.comments.count(),
             "collections_count": self.collections.count(),
+=======
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'image_url': self.image_url,
+            'style': self.style,
+            'author_name': self.author_name,
+            'source_type': self.source_type,
+            'tags': self.tags,
+            'views': self.views,
+            'status': self.status,
+            'created_at': self.created_at.isoformat(),
+            'likes_count': self.likes.count(),
+            'comments_count': self.comments.count(),
+            'collections_count': self.collections.count()
+>>>>>>> temp-branch
         }
         # if include_author:
         #     data['author'] = {
@@ -482,6 +516,46 @@ class FollowTopic(db.Model):
 
     def __repr__(self):
         return f'<FollowTopic user:{self.user_id} topic:{self.topic_id}>'
+<<<<<<< HEAD
 =======
         return f"<Checkin user:{self.user_id} date:{self.checkin_date}>"
 >>>>>>> calligraphy
+=======
+
+
+class Character(db.Model):
+    """书法字符模型"""
+    __tablename__ = 'characters'
+
+    id = db.Column(db.Integer, primary_key=True)
+    work_id = db.Column(db.Integer, db.ForeignKey('works.id'), nullable=False)
+    style = db.Column(db.String(50), nullable=False)  # 书体：楷书、行书、草书等
+    strokes = db.Column(db.Integer, nullable=False)  # 笔画数量
+    stroke_order = db.Column(db.String(100), nullable=False)  # 笔顺
+    recognition = db.Column(db.String(50), nullable=False)  # 识别结果
+    source = db.Column(db.String(200), nullable=False)  # 出自
+    collected_at = db.Column(db.DateTime, default=datetime.utcnow)  # 采集时间
+    keypoints = db.Column(db.JSON, nullable=False, default=list)  # 关键点列表
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+
+    # 关系
+    # 通过work_id外键自动建立与Work模型的关系
+
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'work_id': self.work_id,
+            'style': self.style,
+            'strokes': self.strokes,
+            'stroke_order': self.stroke_order,
+            'recognition': self.recognition,
+            'source': self.source,
+            'collected_at': self.collected_at.isoformat(),
+            'keypoints': self.keypoints,
+            'updated_at': self.updated_at.isoformat()
+        }
+
+    def __repr__(self):
+        return f'<Character id:{self.id} work:{self.work_id} style:{self.style}>'
+>>>>>>> temp-branch
