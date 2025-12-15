@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, Work, Like, Collection
+from models import db, Work, Like, Collection, Character
 from utils import allowed_file, save_upload_file
 import os
 import base64
@@ -57,6 +57,9 @@ def get_works():
     }), 200
 
 
+
+
+
 @works_bp.route('/<int:work_id>', methods=['GET'])
 def get_work(work_id):
     """获取单个作品详情"""
@@ -94,25 +97,65 @@ def create_work():
     if not filename:
         return jsonify({'error': '文件上传失败'}), 500
 
-    # 获取其他字段
+    # 获取作品基本信息
     title = request.form.get('title')
     description = request.form.get('description', '')
     style = request.form.get('style', '')
+    author_name = request.form.get('author_name', '')
+    source_type = request.form.get('source_type', '')
+    
+    # 获取标签，处理为列表格式
+    tags_str = request.form.get('tags', '')
+    tags = [tag.strip() for tag in tags_str.split(',')] if tags_str else []
+    
+    # 获取单字分割结果
+    characters_json = request.form.get('characters', '')
+    characters = []
+    if characters_json:
+        try:
+            import json
+            characters = json.loads(characters_json)
+        except Exception as e:
+            return jsonify({'error': f'单字分割数据格式错误: {str(e)}'}), 400
 
     if not title:
         return jsonify({'error': '缺少作品标题'}), 400
 
-    # 创建作品
+    # 创建作品，直接设为approved状态
     work = Work(
         title=title,
         description=description,
         image_url=filename,
         style=style,
-        author_id=current_user_id
+        author_name=author_name,
+        author_id=current_user_id,
+        source_type=source_type,
+        tags=tags,
+        status='approved'  # 直接设为已通过，跳过审核
     )
 
     try:
         db.session.add(work)
+        db.session.flush()  # 获取work.id，用于创建Character记录
+        
+        # 处理单字分割结果，创建Character记录
+        if characters:
+            for char_data in characters:
+                # 确保单字数据包含必要字段
+                if all(k in char_data for k in ['text', 'position', 'style']):
+                    # 简化处理，使用默认值填充Character模型
+                    character = Character(
+                        work_id=work.id,
+                        style=char_data['style'],
+                        strokes=0,  # 默认值，后续可通过AI识别获取
+                        stroke_order='',  # 默认值，后续可通过AI识别获取
+                        recognition=char_data['text'],
+                        source=work.title,
+                        keypoints=char_data.get('keypoints', []),
+                        collected_at=datetime.utcnow()
+                    )
+                    db.session.add(character)
+        
         db.session.commit()
         return jsonify({
             'message': '作品创建成功',
@@ -230,108 +273,189 @@ def unlike_work(work_id):
         return jsonify({'error': f'取消点赞失败: {str(e)}'}), 500
 
 
+@works_bp.route('/config', methods=['GET'])
+def get_work_config():
+    """获取作品上传的预配置信息
+    
+    Response JSON:
+    - styles: 书法风格列表 [{value, label}]
+    - source_types: 来源类型列表 [{value, label}]
+    - dynasties: 朝代列表 [{value, label}]
+    """
+    try:
+        # 预配置的选项数据，返回前端需要的格式
+        config = {
+            'styles': [
+                {'value': 'kai', 'label': '楷书'},
+                {'value': 'xing', 'label': '行书'},
+                {'value': 'cao', 'label': '草书'},
+                {'value': 'li', 'label': '隶书'},
+                {'value': 'zhuan', 'label': '篆书'},
+                {'value': 'wei', 'label': '魏碑'},
+                {'value': 'shoujin', 'label': '瘦金体'},
+                {'value': 'other', 'label': '其他'}
+            ],
+            'source_types': [
+                {'value': 'classic', 'label': '经典碑帖'},
+                {'value': 'original', 'label': '原创作品'},
+                {'value': 'copy', 'label': '临摹作品'}
+            ],
+            'dynasties': [
+                {'value': '', 'label': '无'},
+                {'value': '唐', 'label': '唐代'},
+                {'value': '宋', 'label': '宋代'},
+                {'value': '元', 'label': '元代'},
+                {'value': '明', 'label': '明代'},
+                {'value': '清', 'label': '清代'},
+                {'value': '现代', 'label': '现代'}
+            ]
+        }
+        return jsonify(config), 200
+    except Exception as e:
+        return jsonify({'error': f'获取配置失败: {str(e)}'}), 500
+
+
 @works_bp.route('/ocr', methods=['POST'])
 def ocr_recognize():
-	"""调用古籍OCR API，对上传的图片进行识别，并将结果JSON暂存到 json_temp 目录。
-	
-	Request JSON:
-	- image: base64 数据（可包含 dataURL 前缀）
-	- det_mode/version/return_position: 可选透传参数
-	
-	Response JSON:
-	- message: success | error
-	- temp_json_path: 暂存JSON文件的相对路径
-	- boxes: 提取的字符框 [{text, position:[x1,y1,x2,y2], confidence, det_confidence}]
-	- image_size: {width, height} 原图尺寸（如可获取）
-	"""
-	try:
-		req_data = request.get_json(silent=True) or {}
-		image_b64 = req_data.get('image', '')
-		if not image_b64:
-			return jsonify({'message': 'error', 'info': '缺少 image(base64)'}), 400
+    """调用古籍OCR API，对上传的图片进行识别，并将结果JSON暂存到 json_temp 目录。
+    
+    Request JSON:
+    - image: base64 数据（可包含 dataURL 前缀）
+    - det_mode/version/return_position: 可选透传参数
+    
+    Response JSON:
+    - message: success | error
+    - temp_json_path: 暂存JSON文件的相对路径
+    - boxes: 提取的字符框 [{text, position:[x1,y1,x2,y2], confidence, det_confidence}]
+    - image_size: {width, height} 原图尺寸（如可获取）
+    """
+    try:
+        # 解析请求数据
+        try:
+            req_data = request.get_json(silent=True) or {}
+        except Exception as e:
+            return jsonify({'message': 'error', 'info': f'请求数据格式错误: {str(e)}'}), 400
+        
+        # 检查必要参数
+        image_b64 = req_data.get('image', '')
+        if not image_b64:
+            return jsonify({'message': 'error', 'info': '缺少 image(base64) 参数'}), 400
 
-		# 去掉 dataURL 前缀
-		if ',' in image_b64:
-			image_b64 = image_b64.split(',', 1)[1]
+        # 处理 base64 数据
+        try:
+            # 去掉 dataURL 前缀
+            if ',' in image_b64:
+                image_b64 = image_b64.split(',', 1)[1]
+            
+            # 验证 base64 格式
+            base64.b64decode(image_b64, validate=True)
+        except Exception as e:
+            return jsonify({'message': 'error', 'info': f'base64 格式错误: {str(e)}'}), 400
 
-		# 读取原图尺寸（如果 Pillow 可用）
-		orig_width = None
-		orig_height = None
-		if _PIL_AVAILABLE:
-			try:
-				img_bytes = base64.b64decode(image_b64)
-				with Image.open(BytesIO(img_bytes)) as im:
-					orig_width, orig_height = im.size
-			except Exception:
-				pass
+        # 读取原图尺寸（如果 Pillow 可用）
+        orig_width = None
+        orig_height = None
+        if _PIL_AVAILABLE:
+            try:
+                img_bytes = base64.b64decode(image_b64)
+                with Image.open(BytesIO(img_bytes)) as im:
+                    orig_width, orig_height = im.size
+            except Exception:
+                pass  # 忽略尺寸获取失败，继续执行
 
-		# 环境变量中读取鉴权
-		token = os.getenv('Token', '').strip('"').strip("'")
-		email = os.getenv('Email', '').strip('"').strip("'")
-		if not token or not email:
-			return jsonify({'message': 'error', 'info': '服务器未配置 OCR Token/Email 环境变量'}), 500
+        # 获取 OCR API 配置
+        token = os.getenv('Token', '').strip('"').strip("'")
+        email = os.getenv('Email', '').strip('"').strip("'")
+        if not token or not email:
+            return jsonify({'message': 'error', 'info': '服务器未配置 OCR Token/Email 环境变量'}), 500
 
-		# 组装请求体（透传可选参数）
-		params = {
-			'token': token,
-			'email': email,
-			'image': image_b64
-		}
-		for key in ('det_mode', 'version', 'return_position'):
-			if key in req_data:
-				params[key] = req_data[key]
-		# 默认确保返回位置信息
-		params.setdefault('return_position', True)
-		params.setdefault('version', 'v2')
-		params.setdefault('det_mode', 'auto')
+        # 组装 OCR API 请求参数
+        params = {
+            'token': token,
+            'email': email,
+            'image': image_b64
+        }
+        for key in ('det_mode', 'version', 'return_position'):
+            if key in req_data:
+                params[key] = req_data[key]
+        # 默认参数确保返回位置信息
+        params.setdefault('return_position', True)
+        params.setdefault('version', 'v2')
+        params.setdefault('det_mode', 'auto')
 
-		# 调用远端 OCR
-		api_url = 'https://ocr.kandianguji.com/ocr_api'
-		resp = requests.post(api_url, json=params, timeout=30)
-		resp.raise_for_status()
-		api_json = resp.json()
+        # 调用远端 OCR API
+        try:
+            api_url = 'https://ocr.kandianguji.com/ocr_api'
+            resp = requests.post(api_url, json=params, timeout=30)
+            resp.raise_for_status()  # 检查 HTTP 响应状态码
+            api_json = resp.json()
+        except requests.exceptions.Timeout:
+            return jsonify({'message': 'error', 'info': 'OCR API 请求超时'}), 504
+        except requests.exceptions.ConnectionError:
+            return jsonify({'message': 'error', 'info': 'OCR API 连接失败'}), 503
+        except requests.exceptions.HTTPError as e:
+            return jsonify({'message': 'error', 'info': f'OCR API 请求失败: HTTP {e.response.status_code}'}), 502
+        except requests.exceptions.RequestException as e:
+            return jsonify({'message': 'error', 'info': f'OCR API 请求失败: {str(e)}'}), 502
+        except ValueError:
+            return jsonify({'message': 'error', 'info': 'OCR API 返回格式错误'}), 502
 
-		# 保存到 json_temp
-		from flask import current_app
-		json_temp_dir = os.path.join(os.path.dirname(current_app.instance_path), 'json_temp')
-		if not os.path.exists(json_temp_dir):
-			os.makedirs(json_temp_dir, exist_ok=True)
+        # 验证 OCR API 返回结果
+        if not isinstance(api_json, dict):
+            return jsonify({'message': 'error', 'info': 'OCR API 返回格式错误'}), 502
+        
+        if api_json.get('message') != 'success':
+            return jsonify({'message': 'error', 'info': f'OCR 识别失败: {api_json.get("info", "未知错误")}'}), 502
 
-		filename = f"ocr_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}.json"
-		temp_path = os.path.join(json_temp_dir, filename)
-		with open(temp_path, 'w', encoding='utf-8') as f:
-			json.dump(api_json, f, ensure_ascii=False, indent=2)
+        # 确保 json_temp 目录存在
+        try:
+            from flask import current_app
+            json_temp_dir = os.path.join(os.path.dirname(current_app.instance_path), 'json_temp')
+            os.makedirs(json_temp_dir, exist_ok=True)
+        except Exception as e:
+            return jsonify({'message': 'error', 'info': f'创建临时目录失败: {str(e)}'}), 500
 
-		# 提取 boxes（与 API_Test/extract_characters.py 的结构保持一致字段）
-		boxes = []
-		if isinstance(api_json, dict) and api_json.get('message') == 'success':
-			data = api_json.get('data', {})
-			text_lines = data.get('text_lines', [])
-			for line_idx, text_line in enumerate(text_lines):
-				words = text_line.get('words', [])
-				for word_idx, word in enumerate(words):
-					text = word.get('text', '')
-					position = word.get('position', [])
-					confidence = word.get('confidence', 0.0)
-					det_confidence = word.get('det_confidence', 0.0)
-					if text and isinstance(position, list) and len(position) >= 4:
-						boxes.append({
-							'text': text,
-							'position': position[:4],  # [x1,y1,x2,y2]
-							'confidence': confidence,
-							'det_confidence': det_confidence,
-							'line_index': line_idx,
-							'word_index': word_idx
-						})
+        # 保存 OCR 结果到临时文件
+        try:
+            filename = f"ocr_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}.json"
+            temp_path = os.path.join(json_temp_dir, filename)
+            with open(temp_path, 'w', encoding='utf-8') as f:
+                json.dump(api_json, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            return jsonify({'message': 'error', 'info': f'保存 OCR 结果失败: {str(e)}'}), 500
 
-		return jsonify({
-			'message': 'success',
-			'temp_json_path': f"json_temp/{filename}",
-			'boxes': boxes,
-			'image_size': {'width': orig_width, 'height': orig_height} if orig_width and orig_height else None
-		}), 200
+        # 提取字符框数据
+        boxes = []
+        try:
+            data = api_json.get('data', {})
+            text_lines = data.get('text_lines', [])
+            for line_idx, text_line in enumerate(text_lines):
+                words = text_line.get('words', [])
+                for word_idx, word in enumerate(words):
+                    text = word.get('text', '')
+                    position = word.get('position', [])
+                    confidence = word.get('confidence', 0.0)
+                    det_confidence = word.get('det_confidence', 0.0)
+                    if text and isinstance(position, list) and len(position) >= 4:
+                        boxes.append({
+                            'text': text,
+                            'position': position[:4],  # [x1,y1,x2,y2]
+                            'confidence': confidence,
+                            'det_confidence': det_confidence,
+                            'line_index': line_idx,
+                            'word_index': word_idx
+                        })
+        except Exception as e:
+            return jsonify({'message': 'error', 'info': f'处理 OCR 结果失败: {str(e)}'}), 500
 
-	except requests.exceptions.RequestException as e:
-		return jsonify({'message': 'error', 'info': f"OCR API 请求失败: {str(e)}"}), 502
-	except Exception as e:
-		return jsonify({'message': 'error', 'info': f'服务器错误: {str(e)}'}), 500
+        # 返回成功结果
+        return jsonify({
+            'message': 'success',
+            'temp_json_path': f"json_temp/{filename}",
+            'boxes': boxes,
+            'image_size': {'width': orig_width, 'height': orig_height} if orig_width and orig_height else None
+        }), 200
+
+    except Exception as e:
+        # 捕获所有未处理的异常
+        return jsonify({'message': 'error', 'info': f'服务器内部错误: {str(e)}'}), 500

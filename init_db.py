@@ -2,7 +2,8 @@
 数据库初始化脚本
 用于创建数据库表和初始数据
 """
-from models import db, User, Work, Comment, CalligraphySet, CalligraphyRead
+from app import create_app
+from models import db, User, Work, Follow, Topic
 from datetime import datetime
 from flask import Flask
 import os
@@ -51,144 +52,82 @@ def init_db(app):
         
         # 提交用户到数据库以获取ID
         db.session.commit()
-        print(f"创建了 {User.query.count()} 个用户")
-        
-        # 创建话题
-        # 创建测试作品
-        work1 = Work(
-            u_id=test_user1.u_id,
-            title='家和万事兴挂联',
-            content='借鉴颜真卿《多宝塔碑》笔法，横排布局',
-            image_url='/static/images/work1.jpg',
-            font_type='楷书',
-            like_count=2,
-            comment_count=1
-        )
-        db.session.add(work1)
-        
-        work2 = Work(
-            u_id=test_user2.u_id,
-            title='宁静致远',
-            content='行书作品，表达平和心态',
-            image_url='/static/images/work2.jpg',
-            font_type='行书',
-            like_count=1,
-            comment_count=0
-        )
-        db.session.add(work2)
-        
-        work3 = Work(
-            u_id=test_user1.u_id,
-            title='中国梦',
-            content='展现时代精神',
-            image_url='/static/images/work3.jpg',
-            font_type='楷书',
-            like_count=1,
-            comment_count=0
-        )
-        db.session.add(work3)
-        
-        # 提交作品到数据库以获取ID
+
+        print(f"创建用户成功:")
+        print(f"  - 管理员: username=admin, password=admin123")
+        print(f"  - 测试用户: username=testuser, password=test123")
+
+        # 创建初始话题分类
+        print("\n正在创建话题分类...")
+        initial_topics = [
+            {
+                'id': 'technique',
+                'name': '技法交流',
+                'description': '分享书写技巧，讨论笔法、结构、章法等',
+                'post_count': 1250,
+                'today_posts': 23,
+                'color': '#8b4513',
+                'icon': '🖌️',
+                'is_popular': True,
+                'created_at': datetime(2022, 3, 15)
+            },
+            {
+                'id': 'appreciation',
+                'name': '作品欣赏',
+                'description': '欣赏经典与原创书法作品，交流鉴赏心得',
+                'post_count': 890,
+                'today_posts': 15,
+                'color': '#4682b4',
+                'icon': '🖼️',
+                'is_popular': True,
+                'created_at': datetime(2022, 3, 16)
+            },
+            {
+                'id': 'qna',
+                'name': '问答求助',
+                'description': '提出书法学习中的疑问，互相解答帮助',
+                'post_count': 678,
+                'today_posts': 19,
+                'color': '#32cd32',
+                'icon': '❓',
+                'is_popular': False,
+                'created_at': datetime(2022, 3, 17)
+            },
+            {
+                'id': 'materials',
+                'name': '文房四宝',
+                'description': '讨论笔墨纸砚等书法工具的选择与使用',
+                'post_count': 543,
+                'today_posts': 12,
+                'color': '#daa520',
+                'icon': '✒️',
+                'is_popular': False,
+                'created_at': datetime(2022, 3, 18)
+            },
+            {
+                'id': 'events',
+                'name': '活动赛事',
+                'description': '书法比赛、展览、线下活动等信息分享',
+                'post_count': 321,
+                'today_posts': 8,
+                'color': '#ff6347',
+                'icon': '🏆',
+                'is_popular': False,
+                'created_at': datetime(2022, 3, 19)
+            }
+        ]
+
+        for topic_data in initial_topics:
+            topic = Topic(**topic_data)
+            db.session.add(topic)
         db.session.commit()
-        print(f"创建了 {Work.query.count()} 个作品")
-        
-        # 创建测试评论
-        comment1 = Comment(
-            u_id=test_user2.u_id,
-            w_id=work1.w_id,
-            comment_type='笔法',
-            content='笔法精湛，气势恢宏！'
-        )
-        db.session.add(comment1)
-        
-        comment2 = Comment(
-            u_id=test_user3.u_id,
-            w_id=work2.w_id,
-            comment_type='结构',
-            content='结构严谨，非常精美！'
-        )
-        db.session.add(comment2)
-        
-        comment3 = Comment(
-            u_id=test_user1.u_id,
-            w_id=work1.w_id,
-            comment_type='章法',
-            content='章法布局合理，值得学习'
-        )
-        db.session.add(comment3)
-        
-        db.session.commit()
-        print(f"创建了 {Comment.query.count()} 个评论")
-        
-        # 创建集字记录
-        calligraphy_set1 = CalligraphySet(
-            u_id=test_user1.u_id,
-            target_text='家和万事兴',
-            font_type='楷书',
-            copybook_author='颜真卿',
-            layout_type='横排',
-            image_url='/static/images/calligraphy_set1.jpg'
-        )
-        db.session.add(calligraphy_set1)
-        
-        calligraphy_set2 = CalligraphySet(
-            u_id=test_user2.u_id,
-            target_text='宁静致远',
-            font_type='行书',
-            copybook_author='王羲之',
-            layout_type='竖排',
-            image_url='/static/images/calligraphy_set2.jpg'
-        )
-        db.session.add(calligraphy_set2)
-        
-        db.session.commit()
-        print(f"创建了 {CalligraphySet.query.count()} 个集字记录")
-        
-        # 创建读帖记录
-        analysis_data1 = json.dumps({
-            "stroke": {"start": "露锋入笔", "end": "回锋收笔"},
-            "structure": {"type": "方形", "balance": "左侧紧凑"},
-            "comment": "该字结构严谨，笔力遒劲"
-        })
-        
-        calligraphy_read1 = CalligraphyRead(
-            u_id=test_user1.u_id,
-            char_id=None,
-            copybook_id=None,
-            upload_image_url='/static/images/char1.jpg',
-            analysis_data=analysis_data1
-        )
-        db.session.add(calligraphy_read1)
-        
-        analysis_data2 = json.dumps({
-            "stroke": {"start": "藏锋入笔", "end": "出锋收笔"},
-            "structure": {"type": "长方形", "balance": "左右均衡"},
-            "comment": "该字笔法流畅，结构优美"
-        })
-        
-        calligraphy_read2 = CalligraphyRead(
-            u_id=test_user3.u_id,
-            char_id=None,
-            copybook_id=None,
-            upload_image_url='/static/images/char2.jpg',
-            analysis_data=analysis_data2
-        )
-        db.session.add(calligraphy_read2)
-        
-        db.session.commit()
-        print(f"创建了 {CalligraphyRead.query.count()} 个读帖记录")
-        
-        # 提交所有更改
-        db.session.commit()
-        
-        print("数据库初始化完成！")
-        print("\n数据库内容概览：")
-        print(f"用户总数: {User.query.count()}")
-        print(f"作品总数: {Work.query.count()}")
-        
-        print(f"评论总数: {Comment.query.count()}")
-        print(f"集字记录: {CalligraphySet.query.count()}")
-        print(f"读帖记录: {CalligraphyRead.query.count()}")
+
+        print(f"创建话题分类成功，共 {len(initial_topics)} 个话题:")
+        for topic_data in initial_topics:
+            print(f"  - {topic_data['name']} (ID: {topic_data['id']})")
+
+        print("\n数据库初始化完成！")
+
 
 if __name__ == '__main__':
     # 创建Flask应用实例

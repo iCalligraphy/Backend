@@ -2,14 +2,16 @@
 
 智能书法学习平台后端 API，基于 Flask + SQLAlchemy + SQLite。
 
-## 技术栈
-
-- **Web 框架**: Flask 3.0.0
-- **ORM**: SQLAlchemy 2.0.23
-- **数据库**: SQLite
-- **认证**: Flask-JWT-Extended
-- **跨域**: Flask-CORS
-- **密码加密**: Werkzeug
+## 技术栈 
+ 
+ - **Web 框架**: Flask 3.0.0 
+ - **ORM**: SQLAlchemy 2.0.23+ 
+ - **数据库**: SQLite 
+ - **认证**: Flask-JWT-Extended 
+ - **跨域**: Flask-CORS 
+ - **密码加密**: Werkzeug 
+ - **图像处理**: Pillow 
+ - **AI 集成**: 豆包 API
 
 ## 项目结构
 
@@ -23,16 +25,21 @@ Backend/
 ├── requirements.txt    # Python 依赖
 ├── .env.example        # 环境变量示例
 ├── .gitignore         # Git 忽略文件
-├── routes/            # API 路由
-│   ├── __init__.py
-│   ├── auth.py        # 认证相关
-│   ├── works.py       # 作品相关
-│   ├── users.py       # 用户相关
-│   ├── comments.py    # 评论相关
-│   └── collections.py # 收藏相关
-└── uploads/           # 文件上传目录
-    ├── works/         # 作品图片
-    └── avatars/       # 用户头像
+├── routes/            # API 路由 
+│   ├── __init__.py 
+│   ├── auth.py        # 认证相关 
+│   ├── works.py       # 作品相关 
+│   ├── users.py       # 用户相关 
+│   ├── comments.py    # 评论相关 
+│   ├── collections.py # 收藏相关 
+│   ├── calligraphy.py # 书法相关 
+│   ├── posts.py       # 帖子相关 
+│   └── topics.py      # 话题相关
+├── calligraphy_annotations/  # 书法注释数据
+│   └── .gitkeep
+├── json_temp/                # 临时JSON文件
+├── Docs/                     # 项目文档
+
 ```
 
 ## 快速开始
@@ -80,7 +87,36 @@ python app.py
 
 应用将在 `http://localhost:5000` 启动。
 
-## API 端点
+## API 端点 
+ 
+### 帖子相关 (`/api/posts`) 
+ 
+ - `GET /api/posts` - 获取帖子列表 
+ - `GET /api/posts/<post_id>` - 获取帖子详情 
+ - `POST /api/posts` - 创建帖子（需认证） 
+ - `PUT /api/posts/<post_id>` - 更新帖子（需认证） 
+ - `DELETE /api/posts/<post_id>` - 删除帖子（需认证） 
+ - `POST /api/posts/<post_id>/like` - 点赞帖子（需认证） 
+ - `GET /api/posts/<post_id>/comments` - 获取帖子评论 
+ 
+### 话题相关 (`/api/topics`) 
+ 
+ - `GET /api/topics` - 获取所有话题列表 
+ - `GET /api/topics/<topic_id>` - 获取单个话题详情 
+ - `POST /api/topics/<topic_id>/follow` - 关注话题（需认证） 
+ - `DELETE /api/topics/<topic_id>/follow` - 取消关注话题（需认证） 
+ - `GET /api/users/<user_id>/following/topics` - 获取用户已关注的话题
+ - `GET /api/users/me/following/topics` - 获取当前用户已关注的话题
+
+### 书法相关 (`/api/calligraphy`)
+
+- `GET /api/calligraphy/annotations` - 获取书法注释列表（支持分页、排序）
+- `POST /api/calligraphy/annotations` - 创建书法注释（需认证）
+- `GET /api/calligraphy/annotations/<id>` - 获取单个书法注释详情
+- `PUT /api/calligraphy/annotations/<id>` - 更新书法注释（需认证且为创建者）
+- `DELETE /api/calligraphy/annotations/<id>` - 删除书法注释（需认证且为创建者）
+- `POST /api/calligraphy/analyze` - 分析书法作品
+- `GET /api/calligraphy/styles` - 获取书法风格列表
 
 ### 认证相关 (`/api/auth`)
 
@@ -122,31 +158,69 @@ python app.py
 - `DELETE /api/collections/<work_id>` - 取消收藏（需认证）
 - `GET /api/collections/check/<work_id>` - 检查是否已收藏（需认证）
 
-## 数据模型
-
+## 数据模型 
+ 
 ### User（用户）
 - id, username, email, password_hash
 - avatar, bio
 - created_at, updated_at
-
+ 
 ### Work（作品）
 - id, title, description, image_url
 - style（书法风格）, author_id, views
 - status（审核状态）
-- created_at, updated_at
-
+ - created_at, updated_at 
+ 
 ### Comment（评论）
 - id, content, work_id, author_id
 - parent_id（父评论，用于回复）
-- created_at
-
+ - created_at 
+ 
 ### Collection（收藏）
 - id, user_id, work_id
+ - created_at 
+ 
+### Like（点赞）
+ - id, user_id, work_id 
+ - created_at 
+ 
+ ### Post（社区帖子） 
+- id, title, content, author_id 
+- topic_id（关联话题，可选）
+- created_at, updated_at 
+ 
+### PostLike（帖子点赞）
+- id, user_id, post_id
+ - created_at 
+ 
+### PostComment（帖子评论）
+ - id, content, post_id, author_id 
+ - parent_id（父评论，用于回复） 
+ - created_at 
+ 
+### Checkin（每日打卡）
+- id, user_id, checkin_date
+ - created_at 
+ 
+### Follow（关注关系）
+- id, follower_id, followed_id
+ - created_at 
+ 
+### Topic（话题）
+- id, name, description
+- post_count, today_posts, color, icon
+- is_popular, created_at
+ 
+ ### FollowTopic（关注话题）
+- id, user_id, topic_id
 - created_at
 
-### Like（点赞）
-- id, user_id, work_id
-- created_at
+### Character（书法字符）
+- id, work_id, style（书体）, strokes（笔画数量）
+- stroke_order（笔顺）, recognition（识别结果）
+- source（出自）, collected_at（采集时间）
+- keypoints（关键点列表：id, description, tips, x, y）
+- updated_at（更新时间）
 
 ## 认证机制
 
@@ -156,12 +230,19 @@ python app.py
 2. 在请求头中添加：`Authorization: Bearer <access_token>`
 3. Token 过期后使用 `refresh_token` 刷新
 
-## 开发注意事项
-
-1. **文件上传**: 支持的图片格式为 png, jpg, jpeg, gif, bmp，最大 16MB
-2. **分页**: 默认每页 12 条数据，可通过 `page` 和 `per_page` 参数调整
-3. **CORS**: 默认允许 `http://localhost:3000` 和 `http://127.0.0.1:3000`
-4. **数据库**: 使用 SQLite，数据文件为 `icalligraphy.db`
+## 开发注意事项 
+ 
+ 1. **文件处理**: 
+    - 书法注释数据存储在 `calligraphy_annotations/` 目录 
+    - 临时 JSON 文件（如 OCR 结果）存储在 `json_temp/` 目录 
+    - 上传的作品图片和头像存储在动态创建的 `uploads/` 目录 
+ 2. **前端集成**: 后端直接集成了前端路由，前端文件位于项目根目录的 `Frontend-HTML/` 目录 
+ 3. **分页**: 默认每页 12 条数据，可通过 `page` 和 `per_page` 参数调整 
+ 4. **CORS**: 支持跨域请求，具体配置可在 `config.py` 中修改 
+ 5. **数据库**: 
+    - 使用 SQLite，数据文件为 `icalligraphy.db` 
+    - 启动时会自动检查数据库连接和表结构，若缺失则自动执行初始化 
+ 6. **AI 功能**: 集成了豆包 API 用于书法作品分析
 
 ## 测试
 
@@ -180,6 +261,28 @@ curl -X POST http://localhost:5000/api/auth/login \
 
 # 获取作品列表
 curl http://localhost:5000/api/works
+
+# 创建书法注释（需要认证）
+curl -X POST http://localhost:5000/api/calligraphy/annotations \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"character": "测试", "keypoints": [{"id": 1, "description": "测试要点", "tips": "这是一个测试提示", "x": 0.5, "y": 0.5}]}'
+
+# 获取书法注释列表
+curl http://localhost:5000/api/calligraphy/annotations
+
+# 获取单个书法注释
+curl http://localhost:5000/api/calligraphy/annotations/<id>
+
+# 更新书法注释（需要认证）
+curl -X PUT http://localhost:5000/api/calligraphy/annotations/<id> \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"character": "更新测试", "keypoints": [{"id": 1, "description": "更新后的要点", "tips": "这是更新后的测试提示", "x": 0.6, "y": 0.6}]}'
+
+# 删除书法注释（需要认证）
+curl -X DELETE http://localhost:5000/api/calligraphy/annotations/<id> \
+  -H "Authorization: Bearer <access_token>"
 ```
 
 ## License

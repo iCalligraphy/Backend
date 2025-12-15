@@ -19,8 +19,8 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 
-    # CORS 配置（前后端一体化部署，允许所有来源）
-    CORS_ORIGINS = '*'
+    # CORS 配置（使用具体地址而非通配符，以支持credentials）
+    CORS_ORIGINS = ['http://localhost:5000', 'http://127.0.0.1:5000']
 
 class DevelopmentConfig(Config):
     """开发环境配置"""

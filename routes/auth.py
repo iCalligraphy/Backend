@@ -32,9 +32,9 @@ def register():
         db.session.add(user)
         db.session.commit()
 
-        # 生成 JWT token
-        access_token = create_access_token(identity=user.id)
-        refresh_token = create_refresh_token(identity=user.id)
+        # 生成 JWT token - 将用户ID转换为字符串以符合JWT要求
+        access_token = create_access_token(identity=str(user.id))
+        refresh_token = create_refresh_token(identity=str(user.id))
 
         return jsonify({
             'message': '注册成功',
@@ -61,9 +61,9 @@ def login():
     if not user or not user.check_password(data['password']):
         return jsonify({'error': '用户名或密码错误'}), 401
 
-    # 生成 JWT token
-    access_token = create_access_token(identity=user.id)
-    refresh_token = create_refresh_token(identity=user.id)
+    # 生成 JWT token - 将用户ID转换为字符串以符合JWT要求
+    access_token = create_access_token(identity=str(user.id))
+    refresh_token = create_refresh_token(identity=str(user.id))
 
     return jsonify({
         'message': '登录成功',
@@ -78,7 +78,7 @@ def login():
 def refresh():
     """刷新访问令牌"""
     current_user_id = get_jwt_identity()
-    access_token = create_access_token(identity=current_user_id)
+    access_token = create_access_token(identity=str(current_user_id))
     return jsonify({'access_token': access_token}), 200
 
 
@@ -87,12 +87,22 @@ def refresh():
 def get_current_user():
     """获取当前登录用户信息"""
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
-
-    if not user:
+    print(f"[GET_CURRENT_USER] 开始获取当前用户信息，用户ID: {current_user_id}")
+    
+    try:
+        # 将字符串ID转换回整数以便数据库查询
+        user_id_int = int(current_user_id)
+        user = User.query.get(user_id_int)
+        
+        if user:
+            print(f"[GET_CURRENT_USER] 获取成功，用户ID: {user_id_int}，用户名: {user.username}")
+            return jsonify({'user': user.to_dict()}), 200
+        
+        print(f"[GET_CURRENT_USER] 用户不存在，用户ID: {user_id_int}")
         return jsonify({'error': '用户不存在'}), 404
-
-    return jsonify({'user': user.to_dict()}), 200
+    except Exception as e:
+        print(f"[GET_CURRENT_USER] 获取失败，用户ID: {current_user_id}，错误: {str(e)}")
+        return jsonify({'error': f'获取用户信息失败: {str(e)}'}), 500
 
 
 @auth_bp.route('/logout', methods=['POST'])
