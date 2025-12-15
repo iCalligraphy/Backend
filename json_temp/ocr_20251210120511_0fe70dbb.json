@@ -1,0 +1,119 @@
+{
+  "data": {
+    "height": 1440,
+    "text_angel": 0,
+    "text_angel_confidence": 1.0,
+    "text_lines": [
+      {
+        "position": [
+          [
+            345,
+            622
+          ],
+          [
+            568,
+            622
+          ],
+          [
+            568,
+            707
+          ],
+          [
+            345,
+            707
+          ]
+        ],
+        "text": "二三",
+        "words": [
+          {
+            "classes": 0,
+            "confidence": 1.0,
+            "det_confidence": 0.7465,
+            "img_direction": 0,
+            "position": [
+              345,
+              641,
+              405,
+              697
+            ],
+            "text": "二",
+            "text_direction": 0
+          },
+          {
+            "classes": 0,
+            "confidence": 0.998,
+            "det_confidence": 0.7567,
+            "img_direction": 0,
+            "position": [
+              495,
+              622,
+              568,
+              707
+            ],
+            "text": "三",
+            "text_direction": 0
+          }
+        ]
+      },
+      {
+        "position": [
+          [
+            256,
+            776
+          ],
+          [
+            537,
+            776
+          ],
+          [
+            537,
+            868
+          ],
+          [
+            256,
+            868
+          ]
+        ],
+        "text": "四五",
+        "words": [
+          {
+            "classes": 0,
+            "confidence": 1.0,
+            "det_confidence": 0.8205,
+            "img_direction": 0,
+            "position": [
+              256,
+              778,
+              330,
+              859
+            ],
+            "text": "四",
+            "text_direction": 0
+          },
+          {
+            "classes": 0,
+            "confidence": 1.0,
+            "det_confidence": 0.8356,
+            "img_direction": 0,
+            "position": [
+              441,
+              776,
+              538,
+              868
+            ],
+            "text": "五",
+            "text_direction": 0
+          }
+        ]
+      }
+    ],
+    "texts": [
+      "二三",
+      "四五"
+    ],
+    "width": 810
+  },
+  "id": "e86fdd60-f665-4305-a4a2-2b699159ff38",
+  "info": "",
+  "message": "success"
+}

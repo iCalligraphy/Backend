@@ -65,6 +65,8 @@ def login():
     access_token = create_access_token(identity=str(user.id))
     refresh_token = create_refresh_token(identity=str(user.id))
 
+    print(1)
+    
     return jsonify({
         'message': '登录成功',
         'user': user.to_dict(),

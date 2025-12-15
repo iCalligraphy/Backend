@@ -11,11 +11,13 @@ import base64
 from datetime import datetime
 from pathlib import Path
 from flask import Blueprint, request, jsonify
+import numpy as np
 from werkzeug.utils import secure_filename
 from PIL import Image
 import io
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import User
+import cv2
 
 # 尝试导入OpenAI客户端
 try:
@@ -239,6 +241,25 @@ def save_annotations():
         if not data:
             return jsonify({'error': '未接收到数据'}), 400
         
+        # 新增
+        
+        # json_String=json.dumps(data)
+        # encoded_Data=base64.b64encode(json_String.encode()).decode()
+        # token="44782d01-8259-485f-ac9f-7cc0a3ef1b27"
+        # email="15168632863"
+        # # received_Data=request.post("https://ocr.kandianguji.com/ocr_api",token,email,encoded_data)
+        # received_Message,received_Id,received_Info,received_Data=request.post("https://ocr.kandianguji.com/ocr_api",token,email,encoded_Data,return_position=True)
+        # image_Data=base64.b64decode(encoded_Data)
+        # image_Array=np.frombuffer(image_Data,np.uint8)
+        # image=cv2.imdecode(image_Array,cv2.IMREAD_COLOR)
+        # text_Lines=received_Data["text_lines"]
+        # position=text_Lines["position"]
+        # for i in position:
+        #     image=cv2.polylines(image,i,True)
+        # data=json.dumps(image,cls=NumpyArrayEncoder)
+        
+        # 新增结尾
+ 
         # 创建保存目录（位于 Backend/calligraphy_annotations 下）
         save_dir = Path(__file__).resolve().parent.parent / 'calligraphy_annotations'
         save_dir.mkdir(exist_ok=True)
