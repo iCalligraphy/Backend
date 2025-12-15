@@ -388,7 +388,6 @@ class Checkin(db.Model):
         }
 
     def __repr__(self):
-<<<<<<< HEAD
         return f'<Checkin user:{self.user_id} date:{self.checkin_date}>'
 
 
@@ -482,6 +481,3 @@ class FollowTopic(db.Model):
 
     def __repr__(self):
         return f'<FollowTopic user:{self.user_id} topic:{self.topic_id}>'
-=======
-        return f"<Checkin user:{self.user_id} date:{self.checkin_date}>"
->>>>>>> calligraphy
