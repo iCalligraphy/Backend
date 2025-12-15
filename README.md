@@ -26,15 +26,15 @@ Backend/
 ├── .env.example        # 环境变量示例
 ├── .gitignore         # Git 忽略文件
 ├── routes/            # API 路由 
- │   ├── __init__.py 
- │   ├── auth.py        # 认证相关 
- │   ├── works.py       # 作品相关 
- │   ├── users.py       # 用户相关 
- │   ├── comments.py    # 评论相关 
- │   ├── collections.py # 收藏相关 
- │   ├── calligraphy.py # 书法相关 
- │   ├── posts.py       # 帖子相关 
- │   └── topics.py      # 话题相关
+│   ├── __init__.py 
+│   ├── auth.py        # 认证相关 
+│   ├── works.py       # 作品相关 
+│   ├── users.py       # 用户相关 
+│   ├── comments.py    # 评论相关 
+│   ├── collections.py # 收藏相关 
+│   ├── calligraphy.py # 书法相关 
+│   ├── posts.py       # 帖子相关 
+│   └── topics.py      # 话题相关
 ├── calligraphy_annotations/  # 书法注释数据
 │   └── .gitkeep
 ├── json_temp/                # 临时JSON文件
@@ -89,7 +89,7 @@ python app.py
 
 ## API 端点 
  
- ### 帖子相关 (`/api/posts`) 
+### 帖子相关 (`/api/posts`) 
  
  - `GET /api/posts` - 获取帖子列表 
  - `GET /api/posts/<post_id>` - 获取帖子详情 
@@ -99,7 +99,7 @@ python app.py
  - `POST /api/posts/<post_id>/like` - 点赞帖子（需认证） 
  - `GET /api/posts/<post_id>/comments` - 获取帖子评论 
  
- ### 话题相关 (`/api/topics`) 
+### 话题相关 (`/api/topics`) 
  
  - `GET /api/topics` - 获取所有话题列表 
  - `GET /api/topics/<topic_id>` - 获取单个话题详情 
@@ -160,27 +160,27 @@ python app.py
 
 ## 数据模型 
  
- ### User（用户） 
- - id, username, email, password_hash 
- - avatar, bio 
+### User（用户）
+- id, username, email, password_hash
+- avatar, bio
+- created_at, updated_at
+ 
+### Work（作品）
+- id, title, description, image_url
+- style（书法风格）, author_id, views
+- status（审核状态）
  - created_at, updated_at 
  
- ### Work（作品） 
- - id, title, description, image_url 
- - style（书法风格）, author_id, views 
- - status（审核状态） 
- - created_at, updated_at 
- 
- ### Comment（评论） 
- - id, content, work_id, author_id 
- - parent_id（父评论，用于回复） 
+### Comment（评论）
+- id, content, work_id, author_id
+- parent_id（父评论，用于回复）
  - created_at 
  
- ### Collection（收藏） 
- - id, user_id, work_id 
+### Collection（收藏）
+- id, user_id, work_id
  - created_at 
  
- ### Like（点赞） 
+### Like（点赞）
  - id, user_id, work_id 
  - created_at 
  
@@ -189,37 +189,38 @@ python app.py
 - topic_id（关联话题，可选）
 - created_at, updated_at 
  
- ### PostLike（帖子点赞） 
- - id, user_id, post_id 
+### PostLike（帖子点赞）
+- id, user_id, post_id
  - created_at 
  
- ### PostComment（帖子评论） 
+### PostComment（帖子评论）
  - id, content, post_id, author_id 
  - parent_id（父评论，用于回复） 
  - created_at 
  
- ### Checkin（每日打卡） 
- - id, user_id, checkin_date 
+### Checkin（每日打卡）
+- id, user_id, checkin_date
  - created_at 
  
- ### Follow（关注关系） 
- - id, follower_id, followed_id 
+### Follow（关注关系）
+- id, follower_id, followed_id
  - created_at 
  
- ### Topic（话题） 
- - id, name, description 
- - post_count, today_posts, color, icon 
- - is_popular, created_at 
+### Topic（话题）
+- id, name, description
+- post_count, today_posts, color, icon
+- is_popular, created_at
  
  ### FollowTopic（关注话题）
 - id, user_id, topic_id
 - created_at
 
-### Annotation（书法注释）
-- id, character, user_id, username
-- keypoints（关键点列表）
-  - id, description, tips, x, y
-- timestamp
+### Character（书法字符）
+- id, work_id, style（书体）, strokes（笔画数量）
+- stroke_order（笔顺）, recognition（识别结果）
+- source（出自）, collected_at（采集时间）
+- keypoints（关键点列表：id, description, tips, x, y）
+- updated_at（更新时间）
 
 ## 认证机制
 
@@ -241,7 +242,7 @@ python app.py
  5. **数据库**: 
     - 使用 SQLite，数据文件为 `icalligraphy.db` 
     - 启动时会自动检查数据库连接和表结构，若缺失则自动执行初始化 
- 6. **AI 功能**: 集成了 OpenAI API 用于书法作品分析
+ 6. **AI 功能**: 集成了豆包 API 用于书法作品分析
 
 ## 测试
 
