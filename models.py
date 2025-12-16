@@ -72,6 +72,8 @@ class Work(db.Model):
     status = db.Column(db.String(20), default='approved')  # 默认approved，跳过审核
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    original_width = db.Column(db.Integer, default=0)  # 原始图片宽度
+    original_height = db.Column(db.Integer, default=0)  # 原始图片高度
 
     # 关系
     comments = db.relationship('Comment', backref='work', lazy='dynamic', cascade='all, delete-orphan')
@@ -445,9 +447,9 @@ class Character(db.Model):
     # 关系
     # 通过work_id外键自动建立与Work模型的关系
 
-    def to_dict(self):
+    def to_dict(self, include_work=True):
         """转换为字典"""
-        return {
+        data = {
             'id': self.id,
             'work_id': self.work_id,
             'style': self.style,
@@ -463,6 +465,82 @@ class Character(db.Model):
             'width': self.width,
             'height': self.height
         }
+        
+        if include_work:
+            # 生成完整的作品图片URL
+            from utils import get_file_url
+            work_image_url = get_file_url(self.work.image_url, 'works')
+            data['work_image_url'] = work_image_url
+            # 添加作品图片的尺寸信息，用于前端裁剪显示
+            data['work_image_width'] = self.work.original_width if hasattr(self.work, 'original_width') else 0
+            data['work_image_height'] = self.work.original_height if hasattr(self.work, 'original_height') else 0
+        
+        return data
 
     def __repr__(self):
         return f'<Character id:{self.id} work:{self.work_id} style:{self.style}>'
+
+
+class CharacterSet(db.Model):
+    """字集模型"""
+    __tablename__ = 'character_sets'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)  # 字集名称
+    description = db.Column(db.Text)  # 字集描述
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # 创建者
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 关系
+    characters = db.relationship('CharacterInSet', backref='character_set', lazy='dynamic', cascade='all, delete-orphan')
+    user = db.relationship('User', backref=db.backref('character_sets', lazy='dynamic'))
+    
+    # 唯一约束：一个用户的字集名称不能重复
+    __table_args__ = (db.UniqueConstraint('user_id', 'name', name='unique_user_character_set_name'),)
+    
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'user_id': self.user_id,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+            'characters_count': self.characters.count()
+        }
+    
+    def __repr__(self):
+        return f'<CharacterSet {self.name} user:{self.user_id}>'
+
+
+class CharacterInSet(db.Model):
+    """字集-单字关联模型"""
+    __tablename__ = 'characters_in_sets'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    character_set_id = db.Column(db.Integer, db.ForeignKey('character_sets.id'), nullable=False)  # 所属字集
+    character_id = db.Column(db.Integer, db.ForeignKey('characters.id'), nullable=False)  # 关联单字
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)  # 添加时间
+    
+    # 关系
+    character = db.relationship('Character', backref=db.backref('in_sets', lazy='dynamic'))
+    
+    # 唯一约束：一个字集内不能重复添加同一个单字
+    __table_args__ = (db.UniqueConstraint('character_set_id', 'character_id', name='unique_set_character'),)
+    
+    def to_dict(self, include_character=True):
+        """转换为字典"""
+        data = {
+            'id': self.id,
+            'character_set_id': self.character_set_id,
+            'character_id': self.character_id,
+            'added_at': self.added_at.isoformat()
+        }
+        if include_character:
+            data['character'] = self.character.to_dict()
+        return data
+    
+    def __repr__(self):
+        return f'<CharacterInSet set:{self.character_set_id} char:{self.character_id}>'

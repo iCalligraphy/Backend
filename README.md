@@ -5,13 +5,16 @@
 ## 技术栈 
  
  - **Web 框架**: Flask 3.0.0 
- - **ORM**: SQLAlchemy 2.0.23+ 
+ - **ORM**: SQLAlchemy 2.0.25+ 
  - **数据库**: SQLite 
- - **认证**: Flask-JWT-Extended 
- - **跨域**: Flask-CORS 
- - **密码加密**: Werkzeug 
- - **图像处理**: Pillow 
- - **AI 集成**: 豆包 API
+ - **认证**: Flask-JWT-Extended 4.6.0 
+ - **跨域**: Flask-CORS 4.0.0 
+ - **密码加密**: Werkzeug 3.0.1 
+ - **图像处理**: Pillow 10.4.0 
+ - **AI 集成**: 豆包 API 
+ - **环境变量**: python-dotenv 1.0.0 
+ - **HTTP 请求**: requests 2.32.3
+- **AI 接口**: openai>=1.0.0
 
 ## 项目结构
 
@@ -37,15 +40,18 @@ Backend/
 │   ├── collections.py      # 收藏相关 
 │   ├── calligraphy.py      # 书法相关 
 │   ├── posts.py            # 帖子相关 
-│   └── topics.py           # 话题相关
+│   ├── topics.py           # 话题相关
+│   └── character_sets.py   # 字集相关
 ├── calligraphy_annotations/  # 书法注释数据
 │   ├── .gitkeep
 │   └── *annotation_*.json    # 注释数据文件
-├── json_temp/                # 临时JSON文件
+├── json_temp/                # 临时 JSON 文件
 │   └── ocr_*.json            # OCR结果文件
 ├── Docs/                     # 项目文档
 │   └── 读帖功能使用说明.md   # 功能说明文档
-├── uploads/                  # 上传文件目录（动态创建）
+├── uploads/                  # 上传文件目录（应用运行时动态创建）
+│   ├── works/               # 作品图片目录
+│   └── avatars/             # 用户头像目录
 
 ```
 
@@ -74,6 +80,17 @@ FLASK_ENV=development
 SECRET_KEY=your-secret-key-here
 JWT_SECRET_KEY=your-jwt-secret-key-here
 DATABASE_URI=sqlite:///icalligraphy.db
+UPLOAD_FOLDER=uploads
+MAX_CONTENT_LENGTH=16777216
+
+# 古籍OCR API配置
+Token="your-ocr-token-here"
+Email="your-email-here"
+
+# 豆包大模型 API 配置
+ARK_API_KEY="your-ark-api-key-here"
+ARK_BASE_URL="https://ark.cn-beijing.volces.com/api/v3"
+ARK_VISION_MODEL="doubao-1.5-vision-pro-32k-250115"
 ```
 
 ### 3. 初始化数据库
@@ -128,10 +145,10 @@ python app.py
 - `PUT /api/calligraphy/annotations/<id>` - 更新书法注释（需认证且为创建者）
 - `DELETE /api/calligraphy/annotations/<id>` - 删除书法注释（需认证且为创建者）
 - `POST /api/calligraphy/analyze` - 分析书法作品
-- `POST /api/calligraphy/save` - 保存书法作品
-- `GET /api/calligraphy/list` - 获取书法作品列表
-- `GET /api/calligraphy/load/<filename>` - 加载书法作品
-- `GET /api/calligraphy/styles` - 获取书法风格列表
+- `POST /api/calligraphy/save` - 保存注释数据到数据库
+- `GET /api/calligraphy/list` - 获取注释列表（兼容旧版API）
+- `GET /api/calligraphy/load/<filename>` - 加载指定的注释文件（兼容旧版API）
+- `GET /api/calligraphy/search` - 搜索书法作品和单字
 
 ### 认证相关 (`/api/auth`)
 
@@ -165,10 +182,11 @@ python app.py
 - `DELETE /api/works/<work_id>/like` - 取消点赞（需认证）
 - `GET /api/works/<work_id>/characters` - 获取作品字符列表
 - `POST /api/works/<work_id>/characters` - 添加作品字符（需认证）
+- `GET /api/works/characters/<character_id>` - 获取单个字符详情
 - `PUT /api/works/characters/<character_id>` - 更新作品字符（需认证）
 - `DELETE /api/works/characters/<character_id>` - 删除作品字符（需认证）
-- `GET /api/works/config` - 获取作品配置
-- `POST /api/works/ocr` - 进行OCR识别
+- `GET /api/works/config` - 获取作品上传的预配置信息
+- `POST /api/works/ocr` - 调用OCR API进行识别，返回结果JSON并暂存
 
 ### 评论相关 (`/api/comments`)
 
@@ -184,12 +202,26 @@ python app.py
 - `DELETE /api/collections/<work_id>` - 取消收藏（需认证）
 - `GET /api/collections/check/<work_id>` - 检查是否已收藏（需认证）
 
+### 字集相关 (`/api/character-sets`)
+
+- `GET /api/character-sets` - 获取用户字集列表（需认证）
+- `POST /api/character-sets` - 创建新字集（需认证）
+- `GET /api/character-sets/<set_id>` - 获取字集详情（需认证）
+- `PUT /api/character-sets/<set_id>` - 更新字集信息（需认证）
+- `DELETE /api/character-sets/<set_id>` - 删除字集（需认证）
+- `GET /api/character-sets/<set_id>/characters` - 获取字集内单字列表（需认证）
+- `POST /api/character-sets/<set_id>/characters` - 添加单字到字集（需认证）
+- `DELETE /api/character-sets/<set_id>/characters/<char_id>` - 从字集移除单字（需认证）
+- `POST /api/character-sets/<set_id>/characters/move` - 移动单字到其他字集（需认证）
+
 ## 数据模型 
  
 ### User（用户）
 - id, username, email, password_hash
 - avatar, bio
 - created_at, updated_at 
+- followers（粉丝关系）
+- following（关注关系） 
 
 ### Work（作品）
 - id, title, description, image_url
@@ -250,6 +282,14 @@ python app.py
 - x, y（单字在作品中的坐标）, width, height（单字尺寸）
 - updated_at（更新时间）
 
+### CharacterSet（字集）
+- id, name（字集名称）, description（字集描述）
+- user_id（创建者）, created_at, updated_at
+
+### CharacterInSet（字集-单字关联）
+- id, character_set_id（所属字集）, character_id（关联单字）
+- added_at（添加时间）
+
 ## 认证机制
 
 使用 JWT (JSON Web Token) 进行认证：
@@ -266,14 +306,46 @@ python app.py
     - 上传的作品图片和头像存储在动态创建的 `uploads/` 目录（按作品和头像分类） 
  2. **前端集成**: 后端直接集成了前端路由，前端文件位于项目根目录的 `Frontend-HTML/` 目录 
  3. **分页**: 默认每页 12 条数据，可通过 `page` 和 `per_page` 参数调整 
- 4. **CORS**: 支持跨域请求，具体配置可在 `config.py` 中修改 
- 5. **数据库**: 
+ 4. **CORS 配置**: 支持跨域请求，使用具体地址而非通配符，以支持 credentials，具体配置在 `config.py` 中修改，当前支持的域名包括：
+    - http://localhost:5000 
+    - http://127.0.0.1:5000 
+    - http://10.234.242.47:5000 
+ 5. **Flask 应用工厂模式**: 采用应用工厂模式创建 Flask 应用，便于不同环境配置和测试 
+ 6. **数据库**: 
     - 使用 SQLite，数据文件为 `icalligraphy.db` 
     - 启动时会自动检查数据库连接和表结构，若缺失则自动执行初始化 
- 6. **AI 功能**: 集成了豆包 API 用于书法作品分析 
- 7. **健康检查**: 提供 `/health` 路由用于健康检查 
- 8. **API 信息**: 提供 `/api` 路由用于查看 API 基本信息 
- 9. **JWT 配置**: 访问令牌有效期 24 小时，刷新令牌有效期 30 天
+ 7. **AI 功能**: 集成了豆包 API 用于书法作品分析，以及古籍 OCR API 用于文字识别 
+ 8. **健康检查**: 提供 `/health` 路由用于健康检查 
+ 9. **API 信息**: 提供 `/api` 路由用于查看 API 基本信息 
+ 10. **JWT 配置**: 
+    - 访问令牌有效期 24 小时 
+    - 刷新令牌有效期 30 天 
+    - 使用 `flask_jwt_extended` 库实现 
+    - 支持 Token 刷新机制 
+ 11. **自动数据库检查**: 应用启动时会自动检查数据库连接和表结构，若缺失则自动执行 `init_db.py` 初始化脚本
+
+## AI 集成配置
+
+### 1. 豆包 API 配置
+
+智能书法学习平台集成了豆包 API 用于书法作品分析，需要在 `.env` 文件中配置以下参数：
+
+- **ARK_API_KEY**: 豆包 API Key，从火山方舟平台获取
+- **ARK_BASE_URL**: API Base URL，根据业务所在地域配置，默认值为 `https://ark.cn-beijing.volces.com/api/v3`
+- **ARK_VISION_MODEL**: 视觉模型 ID，用于图像理解任务（书法笔迹分析等），默认值为 `doubao-1.5-vision-pro-32k-250115`
+
+### 2. 古籍 OCR API 配置
+
+平台集成了古籍 OCR API 用于文字识别，需要在 `.env` 文件中配置以下参数：
+
+- **Token**: OCR API 的令牌
+- **Email**: 注册 OCR API 时使用的邮箱
+
+### 3. AI 功能使用
+
+- **书法作品分析**: 通过 `/api/calligraphy/analyze` 端点调用豆包 API 进行书法作品分析
+- **文字识别**: 通过 `/api/works/ocr` 端点调用古籍 OCR API 进行文字识别
+- **AI 辅助学习**: 结合书法注释数据和 AI 分析结果，为用户提供个性化的学习建议
 
 ## 测试
 

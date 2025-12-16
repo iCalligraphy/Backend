@@ -92,6 +92,19 @@ def create_work():
     if not allowed_file(file.filename):
         return jsonify({'error': '不支持的文件格式'}), 400
 
+    # 获取原始图片尺寸
+    original_width = 0
+    original_height = 0
+    if _PIL_AVAILABLE:
+        try:
+            with Image.open(file) as img:
+                original_width, original_height = img.size
+        except Exception as e:
+            print(f"获取图片尺寸失败: {str(e)}")
+        finally:
+            # 重置文件指针到开头，确保后续操作能正确读取文件
+            file.seek(0)
+
     # 保存文件
     filename = save_upload_file(file, 'works')
     if not filename:
@@ -131,7 +144,9 @@ def create_work():
         author_id=current_user_id,
         source_type=source_type,
         tags=tags,
-        status='approved'  # 直接设为已通过，跳过审核
+        status='approved',  # 直接设为已通过，跳过审核
+        original_width=original_width,
+        original_height=original_height
     )
 
     try:
@@ -441,6 +456,28 @@ def get_character(character_id):
         }), 200
     except Exception as e:
         return jsonify({'error': f'获取单字详情失败: {str(e)}'}), 500
+
+
+@works_bp.route('/characters', methods=['GET'])
+def get_all_characters():
+    """
+    获取所有可用单字列表
+    
+    Response JSON:
+    - characters: 单字列表
+    - total: 单字总数
+    """
+    try:
+        # 获取所有单字，按采集时间倒序排列
+        characters = Character.query.order_by(Character.collected_at.desc()).all()
+        characters_data = [char.to_dict() for char in characters]
+        
+        return jsonify({
+            'characters': characters_data,
+            'total': len(characters_data)
+        }), 200
+    except Exception as e:
+        return jsonify({'error': f'获取单字列表失败: {str(e)}'}), 500
 
 
 @works_bp.route('/config', methods=['GET'])
