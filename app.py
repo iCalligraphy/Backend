@@ -161,7 +161,11 @@ def create_app(config_name='default'):
                 'works': '/api/works',
                 'users': '/api/users',
                 'comments': '/api/comments',
-                'collections': '/api/collections'
+                'collections': '/api/collections',
+                'calligraphy': '/api/calligraphy',
+                'posts': '/api/posts',
+                'topics': '/api/topics',
+                'checkin': '/api/checkin'
             }
         })
 

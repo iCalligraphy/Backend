@@ -423,6 +423,26 @@ def update_character(character_id):
         return jsonify({'error': f'更新单字失败: {str(e)}'}), 500
 
 
+@works_bp.route('/characters/<int:character_id>', methods=['GET'])
+def get_character(character_id):
+    """
+    获取单个单字的详情
+    
+    Response JSON:
+    - character: 单字详情，包括keypoints
+    """
+    try:
+        character = Character.query.get(character_id)
+        if not character:
+            return jsonify({'error': '单字不存在'}), 404
+        
+        return jsonify({
+            'character': character.to_dict()
+        }), 200
+    except Exception as e:
+        return jsonify({'error': f'获取单字详情失败: {str(e)}'}), 500
+
+
 @works_bp.route('/config', methods=['GET'])
 def get_work_config():
     """获取作品上传的预配置信息

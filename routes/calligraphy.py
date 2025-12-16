@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 from PIL import Image
 import io
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import User
+from models import User, Character, db
 
 # 尝试导入OpenAI客户端
 try:
@@ -229,9 +229,10 @@ def analyze_character():
 @calligraphy_bp.route('/save', methods=['POST'])
 def save_annotations():
     """
-    保存注释数据（兼容旧版API）
+    保存注释数据到数据库
     
-    接收JSON格式的注释数据，保存到本地文件
+    接收JSON格式的注释数据，保存到Character表
+    如果提供了char_id，则更新对应记录，否则创建新记录
     """
     try:
         data = request.get_json()
@@ -239,26 +240,67 @@ def save_annotations():
         if not data:
             return jsonify({'error': '未接收到数据'}), 400
         
-        # 创建保存目录（位于 Backend/calligraphy_annotations 下）
-        save_dir = Path(__file__).resolve().parent.parent / 'calligraphy_annotations'
-        save_dir.mkdir(exist_ok=True)
+        # 获取必要字段
+        keypoints = data.get('keypoints', [])
+        char_id = data.get('char_id')
+        character_name = data.get('character', 'unknown')
+        work_id = data.get('work_id', 1)
         
-        # 生成文件名
-        character = data.get('character', 'unknown')
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{character}_annotation_{timestamp}.json"
-        filepath = save_dir / filename
-        
-        # 保存JSON
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        
-        return jsonify({
-            'message': '保存成功',
-            'filepath': str(filepath)
-        }), 200
-        
+        if char_id:
+            try:
+                # 将char_id转换为整数类型
+                char_id_int = int(char_id)
+                
+                # 如果提供了char_id，更新对应记录
+                character = Character.query.get(char_id_int)
+                if character:
+                    # 更新现有记录
+                    character.keypoints = keypoints
+                    character.updated_at = datetime.utcnow()
+                    
+                    # 保存到数据库
+                    db.session.commit()
+                    
+                    return jsonify({
+                        'message': '保存成功',
+                        'character_id': character.id,
+                        'updated': True
+                    }), 200
+                else:
+                    # 如果找不到对应记录，返回错误
+                    return jsonify({'error': f'找不到ID为{char_id_int}的单字记录'}), 404
+            except ValueError:
+                # 如果char_id无法转换为整数，返回错误
+                return jsonify({'error': f'无效的char_id格式: {char_id}'}), 400
+        else:
+            # 如果没有提供char_id，创建新记录（兼容旧版本）
+            character = Character(
+                work_id=work_id,
+                style='unknown',
+                strokes=0,
+                stroke_order='',
+                recognition=character_name,
+                source='read_post',
+                collected_at=datetime.utcnow(),
+                keypoints=keypoints,
+                x=0,
+                y=0,
+                width=100,
+                height=100
+            )
+            
+            # 保存到数据库
+            db.session.add(character)
+            db.session.commit()
+            
+            return jsonify({
+                'message': '保存成功',
+                'character_id': character.id,
+                'updated': False
+            }), 200
+            
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': f'保存失败: {str(e)}'}), 500
 
 @calligraphy_bp.route('/annotations', methods=['POST'])

@@ -17,28 +17,35 @@
 
 ```
 Backend/
-├── app.py              # 主应用入口
-├── config.py           # 配置文件
-├── models.py           # 数据库模型
-├── utils.py            # 工具函数
-├── init_db.py          # 数据库初始化脚本
-├── requirements.txt    # Python 依赖
-├── .env.example        # 环境变量示例
-├── .gitignore         # Git 忽略文件
-├── routes/            # API 路由 
+├── app.py                  # 主应用入口
+├── config.py               # 配置文件
+├── models.py               # 数据库模型
+├── utils.py                # 工具函数
+├── init_db.py              # 数据库初始化脚本
+├── requirements.txt        # Python 依赖
+├── LICENSE                 # 许可证文件
+├── test_topic_features.py  # 话题功能测试脚本
+├── .env.example            # 环境变量示例
+├── .gitignore              # Git 忽略文件
+├── README.md               # 项目说明文档
+├── routes/                 # API 路由 
 │   ├── __init__.py 
-│   ├── auth.py        # 认证相关 
-│   ├── works.py       # 作品相关 
-│   ├── users.py       # 用户相关 
-│   ├── comments.py    # 评论相关 
-│   ├── collections.py # 收藏相关 
-│   ├── calligraphy.py # 书法相关 
-│   ├── posts.py       # 帖子相关 
-│   └── topics.py      # 话题相关
+│   ├── auth.py             # 认证相关 
+│   ├── works.py            # 作品相关 
+│   ├── users.py            # 用户相关 
+│   ├── comments.py         # 评论相关 
+│   ├── collections.py      # 收藏相关 
+│   ├── calligraphy.py      # 书法相关 
+│   ├── posts.py            # 帖子相关 
+│   └── topics.py           # 话题相关
 ├── calligraphy_annotations/  # 书法注释数据
-│   └── .gitkeep
+│   ├── .gitkeep
+│   └── *annotation_*.json    # 注释数据文件
 ├── json_temp/                # 临时JSON文件
+│   └── ocr_*.json            # OCR结果文件
 ├── Docs/                     # 项目文档
+│   └── 读帖功能使用说明.md   # 功能说明文档
+├── uploads/                  # 上传文件目录（动态创建）
 
 ```
 
@@ -85,19 +92,24 @@ python init_db.py
 python app.py
 ```
 
-应用将在 `http://localhost:5000` 启动。
+应用将在 `http://0.0.0.0:5000` 启动，支持外部访问。
 
 ## API 端点 
  
 ### 帖子相关 (`/api/posts`) 
- 
+
  - `GET /api/posts` - 获取帖子列表 
+ - `POST /api/posts` - 创建帖子 
  - `GET /api/posts/<post_id>` - 获取帖子详情 
- - `POST /api/posts` - 创建帖子（需认证） 
- - `PUT /api/posts/<post_id>` - 更新帖子（需认证） 
  - `DELETE /api/posts/<post_id>` - 删除帖子（需认证） 
  - `POST /api/posts/<post_id>/like` - 点赞帖子（需认证） 
- - `GET /api/posts/<post_id>/comments` - 获取帖子评论 
+ - `POST /api/posts/<post_id>/comments` - 创建帖子评论（需认证） 
+ - `DELETE /api/comments/<comment_id>` - 删除帖子评论（需认证）
+
+### 每日打卡相关 (`/api/checkin`)
+
+ - `POST /api/checkin` - 每日打卡（需认证） 
+ - `GET /api/checkin/status` - 检查今日打卡状态（需认证） 
  
 ### 话题相关 (`/api/topics`) 
  
@@ -116,6 +128,9 @@ python app.py
 - `PUT /api/calligraphy/annotations/<id>` - 更新书法注释（需认证且为创建者）
 - `DELETE /api/calligraphy/annotations/<id>` - 删除书法注释（需认证且为创建者）
 - `POST /api/calligraphy/analyze` - 分析书法作品
+- `POST /api/calligraphy/save` - 保存书法作品
+- `GET /api/calligraphy/list` - 获取书法作品列表
+- `GET /api/calligraphy/load/<filename>` - 加载书法作品
 - `GET /api/calligraphy/styles` - 获取书法风格列表
 
 ### 认证相关 (`/api/auth`)
@@ -130,6 +145,11 @@ python app.py
 
 - `GET /api/users/<user_id>` - 获取用户信息
 - `GET /api/users/<user_id>/works` - 获取用户作品列表
+- `GET /api/users/<user_id>/following` - 获取用户关注列表
+- `GET /api/users/<user_id>/followers` - 获取用户粉丝列表
+- `GET /api/users/<user_id>/follow/status` - 检查是否关注用户（需认证）
+- `POST /api/users/<user_id>/follow` - 关注用户（需认证）
+- `DELETE /api/users/<user_id>/follow` - 取消关注用户（需认证）
 - `PUT /api/users/profile` - 更新用户资料（需认证）
 - `POST /api/users/avatar` - 上传头像（需认证）
 - `PUT /api/users/password` - 修改密码（需认证）
@@ -143,6 +163,12 @@ python app.py
 - `DELETE /api/works/<work_id>` - 删除作品（需认证）
 - `POST /api/works/<work_id>/like` - 点赞作品（需认证）
 - `DELETE /api/works/<work_id>/like` - 取消点赞（需认证）
+- `GET /api/works/<work_id>/characters` - 获取作品字符列表
+- `POST /api/works/<work_id>/characters` - 添加作品字符（需认证）
+- `PUT /api/works/characters/<character_id>` - 更新作品字符（需认证）
+- `DELETE /api/works/characters/<character_id>` - 删除作品字符（需认证）
+- `GET /api/works/config` - 获取作品配置
+- `POST /api/works/ocr` - 进行OCR识别
 
 ### 评论相关 (`/api/comments`)
 
@@ -163,55 +189,56 @@ python app.py
 ### User（用户）
 - id, username, email, password_hash
 - avatar, bio
-- created_at, updated_at
- 
+- created_at, updated_at 
+
 ### Work（作品）
 - id, title, description, image_url
-- style（书法风格）, author_id, views
+- style（书法风格）, author_name（作品作者）, author_id, views
+- source_type（来源类型）, tags（作品标签，JSON格式）
 - status（审核状态）
- - created_at, updated_at 
- 
-### Comment（评论）
+- created_at, updated_at 
+
+### Comment（评论，针对作品）
 - id, content, work_id, author_id
 - parent_id（父评论，用于回复）
- - created_at 
- 
+- created_at 
+
 ### Collection（收藏）
 - id, user_id, work_id
- - created_at 
- 
-### Like（点赞）
- - id, user_id, work_id 
- - created_at 
- 
- ### Post（社区帖子） 
+- created_at 
+
+### Like（作品点赞）
+- id, user_id, work_id 
+- created_at 
+
+### Post（社区帖子） 
 - id, title, content, author_id 
 - topic_id（关联话题，可选）
 - created_at, updated_at 
- 
+
 ### PostLike（帖子点赞）
 - id, user_id, post_id
- - created_at 
- 
+- created_at 
+
 ### PostComment（帖子评论）
- - id, content, post_id, author_id 
- - parent_id（父评论，用于回复） 
- - created_at 
- 
+- id, content, post_id, author_id 
+- parent_id（父评论，用于回复） 
+- created_at 
+
 ### Checkin（每日打卡）
 - id, user_id, checkin_date
- - created_at 
- 
+- created_at 
+
 ### Follow（关注关系）
 - id, follower_id, followed_id
- - created_at 
- 
+- created_at 
+
 ### Topic（话题）
 - id, name, description
 - post_count, today_posts, color, icon
 - is_popular, created_at
- 
- ### FollowTopic（关注话题）
+
+### FollowTopic（关注话题）
 - id, user_id, topic_id
 - created_at
 
@@ -219,7 +246,8 @@ python app.py
 - id, work_id, style（书体）, strokes（笔画数量）
 - stroke_order（笔顺）, recognition（识别结果）
 - source（出自）, collected_at（采集时间）
-- keypoints（关键点列表：id, description, tips, x, y）
+- keypoints（关键点列表，JSON格式）
+- x, y（单字在作品中的坐标）, width, height（单字尺寸）
 - updated_at（更新时间）
 
 ## 认证机制
@@ -235,14 +263,17 @@ python app.py
  1. **文件处理**: 
     - 书法注释数据存储在 `calligraphy_annotations/` 目录 
     - 临时 JSON 文件（如 OCR 结果）存储在 `json_temp/` 目录 
-    - 上传的作品图片和头像存储在动态创建的 `uploads/` 目录 
+    - 上传的作品图片和头像存储在动态创建的 `uploads/` 目录（按作品和头像分类） 
  2. **前端集成**: 后端直接集成了前端路由，前端文件位于项目根目录的 `Frontend-HTML/` 目录 
  3. **分页**: 默认每页 12 条数据，可通过 `page` 和 `per_page` 参数调整 
  4. **CORS**: 支持跨域请求，具体配置可在 `config.py` 中修改 
  5. **数据库**: 
     - 使用 SQLite，数据文件为 `icalligraphy.db` 
     - 启动时会自动检查数据库连接和表结构，若缺失则自动执行初始化 
- 6. **AI 功能**: 集成了豆包 API 用于书法作品分析
+ 6. **AI 功能**: 集成了豆包 API 用于书法作品分析 
+ 7. **健康检查**: 提供 `/health` 路由用于健康检查 
+ 8. **API 信息**: 提供 `/api` 路由用于查看 API 基本信息 
+ 9. **JWT 配置**: 访问令牌有效期 24 小时，刷新令牌有效期 30 天
 
 ## 测试
 
@@ -250,41 +281,40 @@ python app.py
 
 ```bash
 # 注册用户
-curl -X POST http://localhost:5000/api/auth/register \
+curl -X POST http://0.0.0.0:5000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"username":"newuser","email":"new@example.com","password":"password123"}'
 
 # 登录
-curl -X POST http://localhost:5000/api/auth/login \
+curl -X POST http://0.0.0.0:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 
 # 获取作品列表
-curl http://localhost:5000/api/works
+curl http://0.0.0.0:5000/api/works
 
 # 创建书法注释（需要认证）
-curl -X POST http://localhost:5000/api/calligraphy/annotations \
+curl -X POST http://0.0.0.0:5000/api/calligraphy/annotations \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <access_token>" \
   -d '{"character": "测试", "keypoints": [{"id": 1, "description": "测试要点", "tips": "这是一个测试提示", "x": 0.5, "y": 0.5}]}'
 
 # 获取书法注释列表
-curl http://localhost:5000/api/calligraphy/annotations
+curl http://0.0.0.0:5000/api/calligraphy/annotations
 
 # 获取单个书法注释
-curl http://localhost:5000/api/calligraphy/annotations/<id>
+curl http://0.0.0.0:5000/api/calligraphy/annotations/<id>
 
 # 更新书法注释（需要认证）
-curl -X PUT http://localhost:5000/api/calligraphy/annotations/<id> \
+curl -X PUT http://0.0.0.0:5000/api/calligraphy/annotations/<id> \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <access_token>" \
   -d '{"character": "更新测试", "keypoints": [{"id": 1, "description": "更新后的要点", "tips": "这是更新后的测试提示", "x": 0.6, "y": 0.6}]}'
 
 # 删除书法注释（需要认证）
-curl -X DELETE http://localhost:5000/api/calligraphy/annotations/<id> \
-  -H "Authorization: Bearer <access_token>"
-```
+curl -X DELETE http://0.0.0.0:5000/api/calligraphy/annotations/<id> \
+  -H "Authorization: Bearer <access_token>"```
 
 ## License
 
-MIT
+查看 [LICENSE](LICENSE) 文件了解详细信息。
