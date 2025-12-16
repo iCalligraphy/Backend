@@ -81,11 +81,15 @@ class Work(db.Model):
 
     def to_dict(self, include_author=True):
         """转换为字典"""
+        # 生成完整的图片URL
+        from utils import get_file_url
+        image_url = get_file_url(self.image_url, 'works')
+        
         data = {
             'id': self.id,
             'title': self.title,
             'description': self.description,
-            'image_url': self.image_url,
+            'image_url': image_url,
             'style': self.style,
             'author_name': self.author_name,
             'source_type': self.source_type,

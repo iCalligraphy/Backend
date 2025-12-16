@@ -15,7 +15,7 @@ from werkzeug.utils import secure_filename
 from PIL import Image
 import io
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import User, Character, db
+from models import User, Character, db, Work
 
 # 尝试导入OpenAI客户端
 try:
@@ -671,3 +671,82 @@ def load_annotation(filename):
         
     except Exception as e:
         return jsonify({'error': f'加载失败: {str(e)}'}), 500
+
+@calligraphy_bp.route('/search', methods=['GET'])
+def search():
+    """
+    搜索书法作品和单字
+    
+    查询参数:
+        q: 搜索关键词
+        page: 页码，默认1
+        per_page: 每页数量，默认20
+    
+    返回结果:
+        works: 作品搜索结果列表
+        characters: 单字搜索结果列表
+        total: 总结果数
+        page: 当前页码
+        per_page: 每页数量
+    """
+    try:
+        # 获取查询参数
+        q = request.args.get('q', '').strip()
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        # 限制每页数量
+        if per_page > 50:
+            per_page = 50
+        
+        # 初始化结果
+        works = []
+        characters = []
+        
+        # 搜索作品
+        work_query = Work.query.filter(Work.status == 'approved')
+        if q:
+            work_query = work_query.filter(
+                Work.title.ilike(f'%{q}%') | 
+                Work.author_name.ilike(f'%{q}%') | 
+                Work.style.ilike(f'%{q}%')
+            )
+        
+        # 搜索单字
+        char_query = Character.query
+        if q:
+            char_query = char_query.filter(Character.recognition.ilike(f'%{q}%'))
+        
+        # 获取结果（不分页，因为结果集不会太大）
+        works = work_query.all()
+        characters = char_query.all()
+        
+        # 转换为字典格式
+        works_data = [work.to_dict() for work in works]
+        characters_data = [char.to_dict() for char in characters]
+        
+        # 返回结果
+        return jsonify({
+            'code': 200,
+            'message': '搜索成功',
+            'data': {
+                'works': works_data,
+                'characters': characters_data,
+                'total': len(works_data) + len(characters_data),
+                'page': page,
+                'per_page': per_page
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'code': 500,
+            'message': f'搜索失败: {str(e)}',
+            'data': {
+                'works': [],
+                'characters': [],
+                'total': 0,
+                'page': 1,
+                'per_page': 20
+            }
+        }), 500
