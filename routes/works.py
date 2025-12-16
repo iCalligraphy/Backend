@@ -331,7 +331,11 @@ def add_work_character(work_id):
         recognition=data['recognition'],
         source=work.title,
         keypoints=data.get('keypoints', []),
-        collected_at=datetime.utcnow()
+        collected_at=datetime.utcnow(),
+        x=data['x'],
+        y=data['y'],
+        width=data['width'],
+        height=data['height']
     )
 
     try:
@@ -367,6 +371,56 @@ def delete_character(character_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'删除单字失败: {str(e)}'}), 500
+
+
+@works_bp.route('/characters/<int:character_id>', methods=['PUT'])
+@jwt_required()
+def update_character(character_id):
+    """修改作品单字"""
+    current_user_id = get_jwt_identity()
+    character = Character.query.get(character_id)
+
+    if not character:
+        return jsonify({'error': '单字不存在'}), 404
+
+    # 检查权限：只有作品作者才能修改单字
+    if character.work.author_id != int(current_user_id):
+        return jsonify({'error': '无权修改单字'}), 403
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': '未接收到数据'}), 400
+
+    # 更新单字字段
+    if 'recognition' in data:
+        character.recognition = data['recognition']
+    if 'style' in data:
+        character.style = data['style']
+    if 'x' in data:
+        character.x = data['x']
+    if 'y' in data:
+        character.y = data['y']
+    if 'width' in data:
+        character.width = data['width']
+    if 'height' in data:
+        character.height = data['height']
+    if 'strokes' in data:
+        character.strokes = data['strokes']
+    if 'stroke_order' in data:
+        character.stroke_order = data['stroke_order']
+    if 'keypoints' in data:
+        character.keypoints = data['keypoints']
+
+    try:
+        db.session.commit()
+        return jsonify({
+            'message': '单字更新成功',
+            'character': character.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'更新单字失败: {str(e)}'}), 500
 
 
 @works_bp.route('/config', methods=['GET'])
