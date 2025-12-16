@@ -143,18 +143,26 @@ def create_work():
             for char_data in characters:
                 # 确保单字数据包含必要字段
                 if all(k in char_data for k in ['text', 'position', 'style']):
-                    # 简化处理，使用默认值填充Character模型
-                    character = Character(
-                        work_id=work.id,
-                        style=char_data['style'],
-                        strokes=0,  # 默认值，后续可通过AI识别获取
-                        stroke_order='',  # 默认值，后续可通过AI识别获取
-                        recognition=char_data['text'],
-                        source=work.title,
-                        keypoints=char_data.get('keypoints', []),
-                        collected_at=datetime.utcnow()
-                    )
-                    db.session.add(character)
+                    # 解析position字段 [x1, y1, x2, y2]
+                    position = char_data['position']
+                    if len(position) >= 4:
+                        x1, y1, x2, y2 = position
+                        # 创建Character记录，保存真实位置信息
+                        character = Character(
+                            work_id=work.id,
+                            style=char_data['style'],
+                            strokes=0,  # 默认值，后续可通过AI识别获取
+                            stroke_order='',  # 默认值，后续可通过AI识别获取
+                            recognition=char_data['text'],
+                            source=work.title,
+                            keypoints=char_data.get('keypoints', []),
+                            collected_at=datetime.utcnow(),
+                            x=x1,  # 保存真实X坐标
+                            y=y1,  # 保存真实Y坐标
+                            width=x2 - x1,  # 计算宽度
+                            height=y2 - y1  # 计算高度
+                        )
+                        db.session.add(character)
         
         db.session.commit()
         return jsonify({
@@ -271,6 +279,94 @@ def unlike_work(work_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'取消点赞失败: {str(e)}'}), 500
+
+
+@works_bp.route('/<int:work_id>/characters', methods=['GET'])
+def get_work_characters(work_id):
+    """获取作品的单字列表"""
+    work = Work.query.get(work_id)
+
+    if not work:
+        return jsonify({'error': '作品不存在'}), 404
+
+    characters = work.characters.all()
+    characters_data = [char.to_dict() for char in characters]
+
+    return jsonify({'characters': characters_data}), 200
+
+
+@works_bp.route('/<int:work_id>/characters', methods=['POST'])
+@jwt_required()
+def add_work_character(work_id):
+    """添加作品单字"""
+    current_user_id = get_jwt_identity()
+    work = Work.query.get(work_id)
+
+    if not work:
+        return jsonify({'error': '作品不存在'}), 404
+
+    # 检查权限：只有作品作者才能添加单字
+    if work.author_id != int(current_user_id):
+        return jsonify({'error': '无权添加单字'}), 403
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': '未接收到数据'}), 400
+
+    # 验证必要字段
+    if not data.get('recognition'):
+        return jsonify({'error': '缺少单字内容'}), 400
+    if not data.get('style'):
+        return jsonify({'error': '缺少单字风格'}), 400
+    if not data.get('x') or not data.get('y') or not data.get('width') or not data.get('height'):
+        return jsonify({'error': '缺少单字位置信息'}), 400
+
+    # 创建单字
+    character = Character(
+        work_id=work_id,
+        style=data['style'],
+        strokes=data.get('strokes', 0),
+        stroke_order=data.get('stroke_order', ''),
+        recognition=data['recognition'],
+        source=work.title,
+        keypoints=data.get('keypoints', []),
+        collected_at=datetime.utcnow()
+    )
+
+    try:
+        db.session.add(character)
+        db.session.commit()
+        return jsonify({
+            'message': '单字添加成功',
+            'character': character.to_dict()
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'添加单字失败: {str(e)}'}), 500
+
+
+@works_bp.route('/characters/<int:character_id>', methods=['DELETE'])
+@jwt_required()
+def delete_character(character_id):
+    """删除单字"""
+    current_user_id = get_jwt_identity()
+    character = Character.query.get(character_id)
+
+    if not character:
+        return jsonify({'error': '单字不存在'}), 404
+
+    # 检查权限：只有作品作者才能删除单字
+    if character.work.author_id != int(current_user_id):
+        return jsonify({'error': '无权删除单字'}), 403
+
+    try:
+        db.session.delete(character)
+        db.session.commit()
+        return jsonify({'message': '单字删除成功'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'删除单字失败: {str(e)}'}), 500
 
 
 @works_bp.route('/config', methods=['GET'])

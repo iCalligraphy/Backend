@@ -95,7 +95,8 @@ class Work(db.Model):
             'created_at': self.created_at.isoformat(),
             'likes_count': self.likes.count(),
             'comments_count': self.comments.count(),
-            'collections_count': self.collections.count()
+            'collections_count': self.collections.count(),
+            'characters_count': self.characters.count()
         }
         if include_author:
             data['author'] = {
@@ -432,6 +433,10 @@ class Character(db.Model):
     collected_at = db.Column(db.DateTime, default=datetime.utcnow)  # 采集时间
     keypoints = db.Column(db.JSON, nullable=False, default=list)  # 关键点列表
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 更新时间
+    x = db.Column(db.Integer, nullable=False, default=0)  # 单字在作品中的X坐标
+    y = db.Column(db.Integer, nullable=False, default=0)  # 单字在作品中的Y坐标
+    width = db.Column(db.Integer, nullable=False, default=100)  # 单字宽度
+    height = db.Column(db.Integer, nullable=False, default=100)  # 单字高度
 
     # 关系
     # 通过work_id外键自动建立与Work模型的关系
@@ -448,7 +453,11 @@ class Character(db.Model):
             'source': self.source,
             'collected_at': self.collected_at.isoformat(),
             'keypoints': self.keypoints,
-            'updated_at': self.updated_at.isoformat()
+            'updated_at': self.updated_at.isoformat(),
+            'x': self.x,
+            'y': self.y,
+            'width': self.width,
+            'height': self.height
         }
 
     def __repr__(self):
