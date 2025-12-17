@@ -94,7 +94,7 @@ def create_app(config_name='default'):
     @app.route('/community/topics')
     def community_topics():
         """社区话题页面"""
-        return render_template('topics.html', active_page='topics')
+        return render_template('topics.html', active_page='community')
 
     @app.route('/community/topics/<topic_type>')
     def community_topic_detail(topic_type):
@@ -104,21 +104,17 @@ def create_app(config_name='default'):
             'posts': 0,
             'followers': 0
         }
-        return render_template('topic_detail.html', active_page='topics', topic_type=topic_type, topic_stats=topic_stats)
+        return render_template('topic_detail.html', active_page='community', topic_type=topic_type, topic_stats=topic_stats)
 
     @app.route('/community/follow')
     def community_follow():
         """社区关注页面"""
-        return render_template('follow.html', active_page='follow')
+        return render_template('follow.html', active_page='community')
 
-    @app.route('/my-collection')
-    def my_collection():
-        """单个我的收藏页面（对应 my_collection.html）"""
-        return render_template('my_collection.html', active_page='my_collection')
     @app.route('/community/notifications')
     def community_notifications():
         """社区通知页面"""
-        return render_template('notifications.html', active_page='notifications')
+        return render_template('notifications.html', active_page='community')
 
     @app.route('/community/feedback')
     def community_feedback():
