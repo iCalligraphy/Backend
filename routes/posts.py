@@ -52,37 +52,37 @@ def handle_errors(f):
     return wrapper
 
 @posts_bp.route('/api/posts', methods=['POST'])
-@jwt_required(optional=True)  # 使用optional参数允许测试环境访问，但优先使用JWT身份
+@jwt_required()  # 必须登录才能发布帖子
 @handle_errors
 def create_post():
     """创建新帖子"""
     data = request.get_json()
-    if not data or 'content' not in data or not data['content'].strip():
+    if not data:
+        return jsonify({'error': '请求数据不能为空'}), 400
+    
+    # 验证必填字段
+    if 'content' not in data or not data['content'].strip():
         return jsonify({'error': '内容不能为空'}), 400
-
+    
+    # 获取话题ID（支持topic和topic_id两种字段名）
+    topic_id = data.get('topic') or data.get('topic_id')
+    if not topic_id:
+        return jsonify({'error': '必须选择话题'}), 400
+    
+    # 验证话题是否存在
+    topic = Topic.query.get(topic_id)
+    if not topic:
+        return jsonify({'error': '话题不存在'}), 400
+    
     # 获取当前用户ID
     from flask_jwt_extended import get_jwt_identity
     current_user_id = get_jwt_identity()
     
     # 确保用户ID是整数类型
-    if current_user_id:
-        try:
-            current_user_id = int(current_user_id)
-        except ValueError:
-            # 如果用户ID不是有效整数，使用默认值
-            current_user_id = 1
-    else:
-        # 如果无法获取用户ID，使用默认值
-        current_user_id = 1
-    
-    # 获取话题ID（支持topic和topic_id两种字段名）
-    topic_id = data.get('topic') or data.get('topic_id')
-    
-    # 验证话题是否存在
-    if topic_id:
-        topic = Topic.query.get(topic_id)
-        if not topic:
-            return jsonify({'error': '话题不存在'}), 400
+    try:
+        current_user_id = int(current_user_id)
+    except ValueError:
+        return jsonify({'error': '无效的用户身份'}), 401
     
     # 创建帖子
     post = Post(
@@ -94,10 +94,8 @@ def create_post():
     db.session.add(post)
     
     # 更新话题帖子计数
-    if topic_id:
-        topic = Topic.query.get(topic_id)
-        topic.post_count += 1
-        topic.today_posts += 1
+    topic = Topic.query.get(topic_id)
+    topic.post_count += 1
     
     db.session.commit()
 

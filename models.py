@@ -212,7 +212,7 @@ class Post(db.Model):
     title = db.Column(db.String(200))  # 标题可选
     content = db.Column(db.Text, nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    topic_id = db.Column(db.String(50), db.ForeignKey('topics.id'), nullable=True)  # 话题ID可选
+    topic_id = db.Column(db.String(50), db.ForeignKey('topics.id'), nullable=False)  # 话题ID必填
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -368,9 +368,8 @@ class Topic(db.Model):
 
     id = db.Column(db.String(50), primary_key=True)  # 使用字符串ID，如'technique'
     name = db.Column(db.String(100), unique=True, nullable=False)
-    description = db.Column(db.Text)
+    description = db.Column(db.Text, nullable=False)
     post_count = db.Column(db.Integer, default=0)
-    today_posts = db.Column(db.Integer, default=0)
     color = db.Column(db.String(20), default='#8b4513')  # 话题颜色
     icon = db.Column(db.String(10), default='🖌️')  # 话题图标
     is_popular = db.Column(db.Boolean, default=False)
@@ -386,7 +385,6 @@ class Topic(db.Model):
             'name': self.name,
             'description': self.description,
             'post_count': self.post_count,
-            'today_posts': self.today_posts,
             'color': self.color,
             'icon': self.icon,
             'is_popular': self.is_popular,

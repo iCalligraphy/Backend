@@ -176,7 +176,13 @@ def test_post_with_topic():
         print(f"❌ 获取帖子列表失败: {posts_response.text}")
         return False
     
-    initial_posts = posts_response.json()
+    initial_posts_data = posts_response.json()
+    # 检查返回数据格式，如果是包含posts字段的字典，则提取posts字段
+    if isinstance(initial_posts_data, dict) and 'posts' in initial_posts_data:
+        initial_posts = initial_posts_data['posts']
+    else:
+        initial_posts = initial_posts_data
+    
     initial_post_count = len(initial_posts)
     
     print(f"✅ 当前帖子数量: {initial_post_count}")
@@ -207,7 +213,13 @@ def test_post_with_topic():
         print(f"❌ 获取帖子列表失败: {posts_response.text}")
         return False
     
-    new_posts = posts_response.json()
+    new_posts_data = posts_response.json()
+    # 检查返回数据格式，如果是包含posts字段的字典，则提取posts字段
+    if isinstance(new_posts_data, dict) and 'posts' in new_posts_data:
+        new_posts = new_posts_data['posts']
+    else:
+        new_posts = new_posts_data
+    
     new_post_count = len(new_posts)
     
     if new_post_count > initial_post_count:
