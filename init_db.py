@@ -8,7 +8,7 @@ from datetime import datetime
 
 def init_db():
     """初始化数据库"""
-    app = create_app()
+    app, _ = create_app()
 
     with app.app_context():
         # 删除所有表

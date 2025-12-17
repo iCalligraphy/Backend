@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from models import db, Post, PostLike, PostComment, Checkin, User, Topic
+from utils import create_notification
 from datetime import datetime, date
 import json
 import traceback
@@ -244,6 +245,15 @@ def like_post(post_id):
         like = PostLike(user_id=user_id, post_id=post_id)
         db.session.add(like)
         db.session.commit()
+        
+        # 发送点赞通知（如果点赞者不是作者自己）
+        if user_id != post.author_id:
+            # 获取点赞者信息
+            liker = User.query.get(user_id)
+            if liker:
+                content = f'{liker.username} 点赞了你的帖子'
+                create_notification(post.author_id, 'like', content, post_id, 'post')
+        
         return jsonify({
             'message': '点赞成功',
             'is_liked': True,
@@ -264,15 +274,24 @@ def create_comment(post_id):
         return jsonify({'error': '评论内容不能为空'}), 400
 
     # 创建评论
+    user_id = get_jwt_identity()
     comment = PostComment(
         content=data['content'].strip(),
         post_id=post_id,
-        author_id=get_jwt_identity(),
+        author_id=user_id,
         parent_id=data.get('parent_id')  # 可选，用于回复
     )
     db.session.add(comment)
     db.session.commit()
-
+    
+    # 发送评论通知（如果评论者不是作者自己）
+    if user_id != post.author_id:
+        # 获取评论者信息
+        commenter = User.query.get(user_id)
+        if commenter:
+            content = f'{commenter.username} 评论了你的帖子'
+            create_notification(post.author_id, 'comment', content, post_id, 'post')
+    
     return jsonify({
         'message': '评论成功',
         'comment': comment.to_dict()

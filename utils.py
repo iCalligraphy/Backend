@@ -96,3 +96,40 @@ def get_file_url(filename, subfolder=''):
     if subfolder:
         return f"/uploads/{subfolder}/{filename}"
     return f"/uploads/{filename}"
+
+
+def create_notification(user_id, notification_type, content, related_id, related_type):
+    """
+    创建通知记录
+
+    Args:
+        user_id: 接收通知的用户ID
+        notification_type: 通知类型（like, comment, follow, mention, system）
+        content: 通知内容
+        related_id: 关联对象ID
+        related_type: 关联对象类型（post, comment, user等）
+
+    Returns:
+        Notification: 创建的通知对象
+    """
+    from models import db, Notification
+    
+    # 创建通知记录
+    notification = Notification(
+        user_id=user_id,
+        type=notification_type,
+        content=content,
+        related_id=related_id,
+        related_type=related_type,
+        is_read=False
+    )
+    
+    try:
+        db.session.add(notification)
+        db.session.commit()
+        print(f'已创建通知给用户 {user_id}')
+        return notification
+    except Exception as e:
+        db.session.rollback()
+        print(f'创建通知失败: {str(e)}')
+        return None

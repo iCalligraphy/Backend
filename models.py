@@ -542,3 +542,37 @@ class CharacterInSet(db.Model):
     
     def __repr__(self):
         return f'<CharacterInSet set:{self.character_set_id} char:{self.character_id}>'
+
+
+class Notification(db.Model):
+    """通知模型"""
+    __tablename__ = 'notifications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)  # 接收通知的用户
+    type = db.Column(db.String(20), nullable=False, index=True)  # 通知类型：like, comment, follow, mention, system
+    content = db.Column(db.Text, nullable=False)  # 通知内容
+    related_id = db.Column(db.Integer, nullable=False)  # 关联对象ID（如帖子ID、评论ID等）
+    related_type = db.Column(db.String(20), nullable=False)  # 关联对象类型：post, comment, user等
+    is_read = db.Column(db.Boolean, default=False, nullable=False, index=True)  # 是否已读
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)  # 创建时间
+    
+    # 关系
+    user = db.relationship('User', backref=db.backref('notifications', lazy='dynamic', cascade='all, delete-orphan'))
+    
+    def to_dict(self):
+        """转换为字典"""
+        from datetime import timedelta
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'type': self.type,
+            'content': self.content,
+            'related_id': self.related_id,
+            'related_type': self.related_type,
+            'is_read': self.is_read,
+            'created_at': (self.created_at + timedelta(hours=8)).isoformat()
+        }
+    
+    def __repr__(self):
+        return f'<Notification user:{self.user_id} type:{self.type} id:{self.id}>'

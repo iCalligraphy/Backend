@@ -1,12 +1,13 @@
 from flask import Flask, jsonify, send_from_directory, render_template
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from dotenv import load_dotenv
 import os
 
 from config import config
 from models import db, User
-from routes import auth_bp, works_bp, users_bp, comments_bp, collections_bp, calligraphy_bp, posts_bp, topics_bp, character_sets_bp
+from routes import auth_bp, works_bp, users_bp, comments_bp, collections_bp, calligraphy_bp, posts_bp, topics_bp, character_sets_bp, notifications_bp
 
 # 加载环境变量
 load_dotenv()
@@ -30,6 +31,12 @@ def create_app(config_name='default'):
     db.init_app(app)
     CORS(app, origins=app.config['CORS_ORIGINS'], supports_credentials=True)
     jwt = JWTManager(app)
+    
+    # 初始化SocketIO
+    socketio = SocketIO(app, 
+                        cors_allowed_origins=app.config['CORS_ORIGINS'],
+                        supports_credentials=True,
+                        async_mode='threading')
 
     # 注册蓝图
     app.register_blueprint(auth_bp)
@@ -41,6 +48,7 @@ def create_app(config_name='default'):
     app.register_blueprint(posts_bp)
     app.register_blueprint(topics_bp)
     app.register_blueprint(character_sets_bp)
+    app.register_blueprint(notifications_bp)
 
     # 创建上传目录
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -215,13 +223,69 @@ def create_app(config_name='default'):
         print(f"[JWT DEBUG] 查找用户身份: {identity}")
         return User.query.get(identity) if identity else None
 
-    return app
+    # WebSocket事件处理
+    @socketio.on('connect')
+    def handle_connect():
+        """处理客户端连接"""
+        print('客户端已连接')
+        emit('connected', {'message': '连接成功'})
+    
+    @socketio.on('disconnect')
+    def handle_disconnect():
+        """处理客户端断开连接"""
+        print('客户端已断开连接')
+    
+    @socketio.on('join_room')
+    def handle_join_room(data):
+        """处理加入房间事件"""
+        user_id = data.get('user_id')
+        if user_id:
+            join_room(f'user_{user_id}')
+            print(f'用户 {user_id} 已加入房间 user_{user_id}')
+            emit('joined_room', {'room': f'user_{user_id}'})
+    
+    @socketio.on('leave_room')
+    def handle_leave_room(data):
+        """处理离开房间事件"""
+        user_id = data.get('user_id')
+        if user_id:
+            leave_room(f'user_{user_id}')
+            print(f'用户 {user_id} 已离开房间 user_{user_id}')
+            emit('left_room', {'room': f'user_{user_id}'})
+    
+    @socketio.on('send_notification')
+    def handle_send_notification(data):
+        """处理发送通知事件"""
+        user_id = data.get('user_id')
+        notification = data.get('notification')
+        if user_id and notification:
+            # 发送通知到用户房间
+            socketio.emit('new_notification', notification, room=f'user_{user_id}')
+            print(f'已向用户 {user_id} 发送通知')
+    
+    @socketio.on('mark_notification_read')
+    def handle_mark_notification_read(data):
+        """处理标记通知已读事件"""
+        notification_id = data.get('notification_id')
+        if notification_id:
+            # 可以在这里添加标记通知已读的逻辑
+            socketio.emit('notification_read', {'notification_id': notification_id}, broadcast=True)
+    
+    @socketio.on('delete_notification')
+    def handle_delete_notification(data):
+        """处理删除通知事件"""
+        notification_id = data.get('notification_id')
+        if notification_id:
+            # 可以在这里添加删除通知的逻辑
+            socketio.emit('notification_deleted', {'notification_id': notification_id}, broadcast=True)
+    
+    return app, socketio
 
 
 if __name__ == '__main__':
     # 获取环境变量
     env = os.getenv('FLASK_ENV', 'development')
-    app = create_app(env)
+    app, socketio = create_app(env)
 
     # 检查数据库是否可用，如果不可用或缺少表则执行初始化
     try:
@@ -241,7 +305,8 @@ if __name__ == '__main__':
         subprocess.run(['python', 'init_db.py'], check=True)
     
     # 运行应用
-    app.run(
+    socketio.run(
+        app,
         host='0.0.0.0',
         port=5000,
         debug=(env == 'development')

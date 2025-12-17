@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, User, Work, Follow
-from utils import allowed_file, save_upload_file
+from utils import allowed_file, save_upload_file, create_notification
 import os
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
@@ -298,6 +298,14 @@ def follow_user(user_id):
     try:
         db.session.add(new_follow)
         db.session.commit()
+        
+        # 发送关注通知
+        # 获取关注者信息
+        follower_user = User.query.get(current_user_id)
+        if follower_user:
+            content = f'{follower_user.username} 关注了你'
+            create_notification(user_id, 'follow', content, current_user_id, 'user')
+        
         return jsonify({
             'message': '关注成功',
             'is_following': True
