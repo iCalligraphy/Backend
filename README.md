@@ -2,19 +2,20 @@
 
 智能书法学习平台后端 API，基于 Flask + SQLAlchemy + SQLite。
 
-## 技术栈 
- 
- - **Web 框架**: Flask 3.0.0 
- - **ORM**: SQLAlchemy 2.0.25+ 
- - **数据库**: SQLite 
- - **认证**: Flask-JWT-Extended 4.6.0 
- - **跨域**: Flask-CORS 4.0.0 
- - **密码加密**: Werkzeug 3.0.1 
- - **图像处理**: Pillow 10.4.0 
- - **AI 集成**: 豆包 API 
- - **环境变量**: python-dotenv 1.0.0 
- - **HTTP 请求**: requests 2.32.3
-- **AI 接口**: openai>=1.0.0
+## 技术栈
+
+- **Web 框架**: Flask 3.0.0 
+- **ORM**: SQLAlchemy 2.0.25+ 
+- **数据库**: SQLite 
+- **认证**: Flask-JWT-Extended 4.6.0 
+- **跨域**: Flask-CORS 4.0.0 
+- **密码加密**: Werkzeug 3.0.1 
+- **图像处理**: Pillow 10.4.0 
+- **AI 集成**: 豆包 API 
+- **环境变量**: python-dotenv 1.0.0 
+- **HTTP 请求**: requests 2.32.3
+- **实时通信**: Flask-SocketIO 5.3.6, python-socketio 5.10.0, python-engineio>=4.8.0
+  - 异步模式: threading
 
 ## 项目结构
 
@@ -29,8 +30,11 @@ Backend/
 ├── LICENSE                 # 许可证文件
 ├── test_topic_features.py  # 话题功能测试脚本
 ├── .env.example            # 环境变量示例
+├── .env                    # 环境变量（运行时创建）
 ├── .gitignore              # Git 忽略文件
 ├── README.md               # 项目说明文档
+├── instance/               # 数据库文件目录
+│   └── icalligraphy.db     # SQLite 数据库文件
 ├── routes/                 # API 路由 
 │   ├── __init__.py 
 │   ├── auth.py             # 认证相关 
@@ -41,7 +45,8 @@ Backend/
 │   ├── calligraphy.py      # 书法相关 
 │   ├── posts.py            # 帖子相关 
 │   ├── topics.py           # 话题相关
-│   └── character_sets.py   # 字集相关
+│   ├── character_sets.py   # 字集相关
+│   ├── notifications.py    # 通知相关
 ├── calligraphy_annotations/  # 书法注释数据
 │   ├── .gitkeep
 │   └── *annotation_*.json    # 注释数据文件
@@ -214,6 +219,21 @@ python app.py
 - `DELETE /api/character-sets/<set_id>/characters/<char_id>` - 从字集移除单字（需认证）
 - `POST /api/character-sets/<set_id>/characters/move` - 移动单字到其他字集（需认证）
 
+### 通知相关 (`/api/notifications`)
+
+- `GET /api/notifications` - 获取通知列表（需认证，支持分页和类型筛选）
+- `GET /api/notifications/count` - 获取未读通知数量（需认证）
+- `PUT /api/notifications/<notification_id>/read` - 标记单条通知为已读（需认证）
+- `PUT /api/notifications/read-all` - 标记所有通知为已读（需认证）
+- `DELETE /api/notifications/<notification_id>` - 删除单条通知（需认证）
+- `DELETE /api/notifications` - 清空所有通知（需认证）
+- `GET /api/notifications/stats` - 获取通知统计信息（需认证）
+
+### 系统路由
+
+- `GET /health` - 健康检查
+- `GET /api` - API 信息
+
 ## 数据模型 
  
 ### User（用户）
@@ -290,6 +310,11 @@ python app.py
 - id, character_set_id（所属字集）, character_id（关联单字）
 - added_at（添加时间）
 
+### Notification（通知）
+- id, user_id（接收通知的用户）, type（通知类型：like, comment, follow, mention, system）
+- content（通知内容）, related_id（关联对象ID）, related_type（关联对象类型：post, comment, user等）
+- is_read（是否已读）, created_at（创建时间）
+
 ## 认证机制
 
 使用 JWT (JSON Web Token) 进行认证：
@@ -305,24 +330,25 @@ python app.py
     - 临时 JSON 文件（如 OCR 结果）存储在 `json_temp/` 目录 
     - 上传的作品图片和头像存储在动态创建的 `uploads/` 目录（按作品和头像分类） 
  2. **前端集成**: 后端直接集成了前端路由，前端文件位于项目根目录的 `Frontend-HTML/` 目录 
- 3. **分页**: 默认每页 12 条数据，可通过 `page` 和 `per_page` 参数调整 
- 4. **CORS 配置**: 支持跨域请求，使用具体地址而非通配符，以支持 credentials，具体配置在 `config.py` 中修改，当前支持的域名包括：
+ 3. **实时通信**: 使用 Flask-SocketIO 实现实时通信功能，支持通知推送等实时交互 
+ 4. **分页**: 默认每页 12 条数据，可通过 `page` 和 `per_page` 参数调整 
+ 5. **CORS 配置**: 支持跨域请求，使用具体地址而非通配符，以支持 credentials，具体配置在 `config.py` 中修改，当前支持的域名包括：
     - http://localhost:5000 
     - http://127.0.0.1:5000 
     - http://10.234.242.47:5000 
- 5. **Flask 应用工厂模式**: 采用应用工厂模式创建 Flask 应用，便于不同环境配置和测试 
- 6. **数据库**: 
+ 6. **Flask 应用工厂模式**: 采用应用工厂模式创建 Flask 应用，便于不同环境配置和测试 
+ 7. **数据库**: 
     - 使用 SQLite，数据文件为 `icalligraphy.db` 
     - 启动时会自动检查数据库连接和表结构，若缺失则自动执行初始化 
- 7. **AI 功能**: 集成了豆包 API 用于书法作品分析，以及古籍 OCR API 用于文字识别 
- 8. **健康检查**: 提供 `/health` 路由用于健康检查 
- 9. **API 信息**: 提供 `/api` 路由用于查看 API 基本信息 
- 10. **JWT 配置**: 
+ 8. **AI 功能**: 集成了豆包 API 用于书法作品分析，以及古籍 OCR API 用于文字识别 
+ 9. **健康检查**: 提供 `/health` 路由用于健康检查 
+ 10. **API 信息**: 提供 `/api` 路由用于查看 API 基本信息 
+ 11. **JWT 配置**: 
     - 访问令牌有效期 24 小时 
     - 刷新令牌有效期 30 天 
     - 使用 `flask_jwt_extended` 库实现 
     - 支持 Token 刷新机制 
- 11. **自动数据库检查**: 应用启动时会自动检查数据库连接和表结构，若缺失则自动执行 `init_db.py` 初始化脚本
+ 12. **自动数据库检查**: 应用启动时会自动检查数据库连接和表结构，若缺失则自动执行 `init_db.py` 初始化脚本
 
 ## AI 集成配置
 
