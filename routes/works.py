@@ -92,21 +92,38 @@ def create_work():
     if not allowed_file(file.filename):
         return jsonify({'error': '不支持的文件格式'}), 400
 
-    # 获取原始图片尺寸
-    original_width = 0
-    original_height = 0
-    if _PIL_AVAILABLE:
-        try:
-            with Image.open(file) as img:
-                original_width, original_height = img.size
-        except Exception as e:
-            print(f"获取图片尺寸失败: {str(e)}")
-        finally:
-            # 重置文件指针到开头，确保后续操作能正确读取文件
-            file.seek(0)
-
-    # 保存文件
-    filename = save_upload_file(file, 'works')
+    # 先压缩图片至宽度800像素
+    from io import BytesIO
+    compressed_file = BytesIO()
+    new_width = 0
+    new_height = 0
+    
+    with Image.open(file) as img:
+        # 计算新尺寸，保持原始比例
+        original_width, original_height = img.size
+        if original_width > 800:
+            new_width = 800
+            new_height = int((new_width / original_width) * original_height)
+        else:
+            new_width, new_height = original_width, original_height
+        
+        # 调整图片尺寸
+        resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # 保存压缩后的图片到BytesIO对象
+        resized_img.save(compressed_file, format=img.format)
+        compressed_file.seek(0)
+    
+    # 将BytesIO对象转换为werkzeug.FileStorage对象，以便使用save_upload_file函数保存
+    from werkzeug.datastructures import FileStorage
+    compressed_file_storage = FileStorage(
+        stream=compressed_file,
+        filename=file.filename,
+        content_type=file.content_type
+    )
+    
+    # 保存压缩后的文件
+    filename = save_upload_file(compressed_file_storage, 'works')
     if not filename:
         return jsonify({'error': '文件上传失败'}), 500
 
@@ -145,8 +162,8 @@ def create_work():
         source_type=source_type,
         tags=tags,
         status='approved',  # 直接设为已通过，跳过审核
-        original_width=original_width,
-        original_height=original_height
+        original_width=new_width,  # 保存压缩后的宽度
+        original_height=new_height  # 保存压缩后的高度
     )
 
     try:
