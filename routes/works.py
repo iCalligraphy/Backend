@@ -26,6 +26,8 @@ def get_works():
     style = request.args.get('style')
     status = request.args.get('status', 'approved')
     search = request.args.get('search')
+    author = request.args.get('author')
+    source_type = request.args.get('source_type')
 
     query = Work.query
 
@@ -37,9 +39,21 @@ def get_works():
     if style:
         query = query.filter_by(style=style)
 
+    # 过滤作者
+    if author:
+        query = query.filter(Work.author_name.contains(author))
+
+    # 过滤来源类型
+    if source_type:
+        query = query.filter_by(source_type=source_type)
+
     # 搜索
     if search:
-        query = query.filter(Work.title.contains(search) | Work.description.contains(search))
+        query = query.filter(
+            Work.title.contains(search) | 
+            Work.description.contains(search) |
+            Work.author_name.contains(search)
+        )
 
     # 分页
     pagination = query.order_by(Work.created_at.desc()).paginate(
