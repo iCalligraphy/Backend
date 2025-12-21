@@ -269,6 +269,28 @@ def remove_character_from_set(set_id, char_id):
         return jsonify({'error': f'单字移除失败: {str(e)}'}), 500
 
 
+@character_sets_bp.route('/stats', methods=['GET'])
+@jwt_required()
+def get_character_set_stats():
+    """获取用户字集统计数据，包括今日更新"""
+    from datetime import datetime, timedelta
+    current_user_id = get_jwt_identity()
+    
+    # 获取今天的开始时间（UTC+8时区，因为前端显示的是本地时间）
+    now = datetime.utcnow() + timedelta(hours=8)  # 转换为UTC+8
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(hours=8)  # 转回UTC存储
+    
+    # 统计今天添加的单字数量
+    today_updates = CharacterInSet.query.join(CharacterSet).filter(
+        CharacterSet.user_id == current_user_id,
+        CharacterInSet.added_at >= today_start
+    ).count()
+    
+    return jsonify({
+        'today_updates': today_updates
+    }), 200
+
+
 @character_sets_bp.route('/<int:set_id>/characters/move', methods=['POST'])
 @jwt_required()
 def move_character_between_sets(set_id):
