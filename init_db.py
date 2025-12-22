@@ -3,7 +3,7 @@
 用于创建数据库表和初始数据
 """
 from app import create_app
-from models import db, User, Work, Follow, Topic
+from models import db, User, Work, Follow, Topic, Notification, Post, PostLike, PostComment, Checkin, FollowTopic, Character, CharacterSet, CharacterInSet
 from datetime import datetime
 
 def init_db():
