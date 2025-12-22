@@ -235,10 +235,12 @@ def like_post(post_id):
         # 如果已经点赞，则取消点赞
         db.session.delete(existing_like)
         db.session.commit()
+        # 重新获取帖子，确保数据最新
+        post = Post.query.get(post_id)
         return jsonify({
             'message': '已取消点赞',
             'is_liked': False,
-            'likes_count': post.likes.count() - 1
+            'likes_count': post.likes.count()
         })
     else:
         # 创建新点赞

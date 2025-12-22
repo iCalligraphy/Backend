@@ -46,16 +46,23 @@ def get_notifications():
 @jwt_required()
 def get_notifications_count():
     """获取未读通知数量"""
-    user_id = get_jwt_identity()
-    if not user_id:
-        return jsonify({'error': '未授权'}), 401
-    
-    # 获取未读通知数量
-    unread_count = Notification.query.filter_by(user_id=user_id, is_read=False).count()
-    
-    return jsonify({
-        'unread_count': unread_count
-    })
+    try:
+        user_id = get_jwt_identity()
+        if not user_id:
+            return jsonify({'error': '未授权'}), 401
+        
+        # 获取未读通知数量
+        unread_count = Notification.query.filter_by(user_id=user_id, is_read=False).count()
+        
+        return jsonify({
+            'unread_count': unread_count
+        })
+    except Exception as e:
+        print(f"[ERROR] 获取通知数量失败: {str(e)}")
+        # 返回默认值，避免前端500错误
+        return jsonify({
+            'unread_count': 0
+        }), 200
 
 
 @notifications_bp.route('/<int:notification_id>/read', methods=['PUT'])
