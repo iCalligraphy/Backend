@@ -15,7 +15,8 @@ from werkzeug.utils import secure_filename
 from PIL import Image
 import io
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import User, Character, db, Work
+from models import User, Character, db, Work, SearchLog
+from sqlalchemy import func
 
 # 尝试导入OpenAI客户端
 try:
@@ -725,6 +726,17 @@ def search():
         works_data = [work.to_dict() for work in works]
         characters_data = [char.to_dict() for char in characters]
         
+        # 记录搜索词（只记录非空搜索词）
+        if q:
+            try:
+                search_log = SearchLog(keyword=q)
+                db.session.add(search_log)
+                db.session.commit()
+            except Exception as log_error:
+                # 记录失败不影响搜索结果
+                db.session.rollback()
+                print(f"记录搜索词失败: {log_error}")
+        
         # 返回结果
         return jsonify({
             'code': 200,
@@ -748,5 +760,75 @@ def search():
                 'total': 0,
                 'page': 1,
                 'per_page': 20
+            }
+        }), 500
+
+
+@calligraphy_bp.route('/hot-keywords', methods=['GET'])
+def get_hot_keywords():
+    """
+    获取热门搜索词
+    
+    查询参数:
+        limit: 返回数量，默认10，最大20
+        days: 统计最近多少天的数据，默认7天
+    
+    返回结果:
+        keywords: 热门搜索词列表，按搜索次数降序
+    """
+    try:
+        from datetime import timedelta
+        
+        # 获取查询参数
+        limit = request.args.get('limit', 10, type=int)
+        days = request.args.get('days', 7, type=int)
+        
+        # 限制参数范围
+        if limit > 20:
+            limit = 20
+        if limit < 1:
+            limit = 10
+        if days > 30:
+            days = 30
+        if days < 1:
+            days = 7
+        
+        # 计算时间范围
+        start_date = datetime.utcnow() - timedelta(days=days)
+        
+        # 统计热门搜索词
+        hot_keywords = db.session.query(
+            SearchLog.keyword,
+            func.count(SearchLog.id).label('count')
+        ).filter(
+            SearchLog.created_at >= start_date
+        ).group_by(
+            SearchLog.keyword
+        ).order_by(
+            func.count(SearchLog.id).desc()
+        ).limit(limit).all()
+        
+        # 转换为列表格式
+        keywords_data = [
+            {'keyword': kw.keyword, 'count': kw.count}
+            for kw in hot_keywords
+        ]
+        
+        return jsonify({
+            'code': 200,
+            'message': '获取成功',
+            'data': {
+                'keywords': keywords_data,
+                'days': days
+            }
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'code': 500,
+            'message': f'获取热门搜索词失败: {str(e)}',
+            'data': {
+                'keywords': [],
+                'days': 7
             }
         }), 500
