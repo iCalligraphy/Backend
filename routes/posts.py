@@ -308,7 +308,7 @@ def delete_post(post_id):
     if not post:
         return jsonify({'error': '帖子不存在'}), 404
 
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     if post.author_id != user_id:
         return jsonify({'error': '无权删除该帖子'}), 403
 
@@ -317,16 +317,16 @@ def delete_post(post_id):
 
     return jsonify({'message': '帖子已删除'})
 
-@posts_bp.route('/api/comments/<int:comment_id>', methods=['DELETE'])
+@posts_bp.route('/api/post-comments/<int:comment_id>', methods=['DELETE'])
 @jwt_required()
 @handle_errors
-def delete_comment(comment_id):
-    """删除评论（仅作者可删除）"""
+def delete_post_comment(comment_id):
+    """删除帖子评论（仅作者可删除）"""
     comment = PostComment.query.get(comment_id)
     if not comment:
         return jsonify({'error': '评论不存在'}), 404
 
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     if comment.author_id != user_id:
         return jsonify({'error': '无权删除该评论'}), 403
 
