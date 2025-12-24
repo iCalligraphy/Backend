@@ -181,6 +181,7 @@ python app.py
 - `GET /api/calligraphy/list` - 获取注释列表（兼容旧版API）
 - `GET /api/calligraphy/load/<filename>` - 加载指定的注释文件（兼容旧版API）
 - `GET /api/calligraphy/search` - 搜索书法作品和单字
+- `GET /api/calligraphy/hot-keywords` - 获取热门搜索词（支持limit和days参数）
 
 ### 帖子相关 (`/api/posts`) 
 
@@ -194,7 +195,8 @@ python app.py
 
 ### 帖子评论相关
 
-- 帖子评论功能通过帖子相关端点实现，详见「帖子相关」部分
+- `POST /api/posts/<post_id>/comments` - 创建帖子评论（需认证）
+- `DELETE /api/post-comments/<comment_id>` - 删除帖子评论（需认证，仅作者可删除）
 
 ### 话题相关 (`/api/topics`) 
 
@@ -371,6 +373,13 @@ python app.py
   - is_read（是否已读，默认false）
 - **时间戳**: created_at（创建时间）
 - **关系**: user（接收通知的用户）
+
+### SearchLog（搜索记录）
+- **基本字段**: id, keyword（搜索关键词）
+- **用户关联**: user_id（可选，记录搜索用户）
+- **时间戳**: created_at（搜索时间）
+- **用途**: 统计热门搜索词，支持搜索推荐功能
+- **关系**: user（搜索用户，可选）
 
 ## 认证机制
 
