@@ -544,6 +544,31 @@ class CharacterInSet(db.Model):
         return f'<CharacterInSet set:{self.character_set_id} char:{self.character_id}>'
 
 
+class SearchLog(db.Model):
+    """搜索记录模型 - 用于统计热门搜索词"""
+    __tablename__ = 'search_logs'
+
+    id = db.Column(db.Integer, primary_key=True)
+    keyword = db.Column(db.String(100), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # 可选，记录搜索用户
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    # 关系
+    user = db.relationship('User', backref=db.backref('search_logs', lazy='dynamic'))
+
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            'id': self.id,
+            'keyword': self.keyword,
+            'user_id': self.user_id,
+            'created_at': self.created_at.isoformat()
+        }
+
+    def __repr__(self):
+        return f'<SearchLog keyword:{self.keyword}>'
+
+
 class Notification(db.Model):
     """通知模型"""
     __tablename__ = 'notifications'
