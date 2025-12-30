@@ -64,7 +64,8 @@ class Work(db.Model):
     description = db.Column(db.Text)
     image_url = db.Column(db.String(255), nullable=False)
     style = db.Column(db.String(50))  # 书法风格：楷书、行书、草书等
-    author_name = db.Column(db.String(100))  # 作品作者（朝代+作者）
+    dynasty = db.Column(db.String(50))  # 朝代信息
+    author_name = db.Column(db.String(100))  # 作品作者
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     source_type = db.Column(db.String(50))  # 来源类型
     tags = db.Column(db.JSON, default=list)  # 作品标签
@@ -93,6 +94,7 @@ class Work(db.Model):
             'description': self.description,
             'image_url': image_url,
             'style': self.style,
+            'dynasty': self.dynasty,
             'author_name': self.author_name,
             'source_type': self.source_type,
             'tags': self.tags,

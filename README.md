@@ -262,7 +262,7 @@ python app.py
 ### Work（作品）
 - **基本字段**: id, title, description, image_url
 - **作品信息**: 
-  - style（书法风格）, author_name（作品作者）, author_id
+  - style（书法风格）, dynasty（朝代）, author_name（作品作者）, author_id
   - source_type（来源类型）, tags（作品标签，JSON格式）
   - views（浏览量）, status（审核状态，默认approved）
   - original_width, original_height（原始图片尺寸）

@@ -27,6 +27,7 @@ def get_works():
     status = request.args.get('status', 'approved')
     search = request.args.get('search')
     author = request.args.get('author')
+    dynasty = request.args.get('dynasty')
     source_type = request.args.get('source_type')
 
     query = Work.query
@@ -43,6 +44,10 @@ def get_works():
     if author:
         query = query.filter(Work.author_name.contains(author))
 
+    # 过滤朝代
+    if dynasty:
+        query = query.filter(Work.dynasty.contains(dynasty))
+
     # 过滤来源类型
     if source_type:
         query = query.filter_by(source_type=source_type)
@@ -52,7 +57,8 @@ def get_works():
         query = query.filter(
             Work.title.contains(search) | 
             Work.description.contains(search) |
-            Work.author_name.contains(search)
+            Work.author_name.contains(search) |
+            Work.dynasty.contains(search)
         )
 
     # 分页
@@ -145,6 +151,7 @@ def create_work():
     title = request.form.get('title')
     description = request.form.get('description', '')
     style = request.form.get('style', '')
+    dynasty = request.form.get('dynasty', '')
     author_name = request.form.get('author_name', '')
     source_type = request.form.get('source_type', '')
     
@@ -171,6 +178,7 @@ def create_work():
         description=description,
         image_url=filename,
         style=style,
+        dynasty=dynasty,
         author_name=author_name,
         author_id=current_user_id,
         source_type=source_type,
@@ -241,6 +249,10 @@ def update_work(work_id):
         work.description = data['description']
     if 'style' in data:
         work.style = data['style']
+    if 'dynasty' in data:
+        work.dynasty = data['dynasty']
+    if 'author_name' in data:
+        work.author_name = data['author_name']
 
     try:
         db.session.commit()

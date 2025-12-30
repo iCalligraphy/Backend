@@ -710,7 +710,8 @@ def search():
             work_query = work_query.filter(
                 Work.title.ilike(f'%{q}%') | 
                 Work.author_name.ilike(f'%{q}%') | 
-                Work.style.ilike(f'%{q}%')
+                Work.style.ilike(f'%{q}%') |
+                Work.dynasty.ilike(f'%{q}%')
             )
         
         # 搜索单字
