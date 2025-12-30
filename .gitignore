@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+json_temp/
 *.py[cod]
 *$py.class
 *.so

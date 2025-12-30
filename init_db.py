@@ -22,14 +22,14 @@ def init_db():
         # 创建测试用户
         print("正在创建测试数据...")
         admin = User(
-            username='admin',
+            username='管理员',
             email='admin@icalligraphy.com',
             bio='系统管理员'
         )
         admin.set_password('admin123')
 
         test_user = User(
-            username='testuser',
+            username='测试用户',
             email='test@example.com',
             bio='测试用户，喜欢书法艺术'
         )
